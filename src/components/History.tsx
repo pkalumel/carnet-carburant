@@ -5,6 +5,7 @@ import {
   fmtDateTime, fmtEur, fmtKm, fmtLiters, fmtPricePerL, parseDecimal, toLocalInputValue,
 } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
+import { AttachIcon, PumpIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
@@ -125,8 +126,9 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
         <span className="lbl">Notes</span>
         <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
-      <button type="button" className="btn-ghost" style={{ width: '100%', marginBottom: 12 }} onClick={() => photoInput.current?.click()}>
-        {newPhoto ? `📎 Nouvelle photo : ${newPhoto.name}` : fillup.photo_path ? '📎 Remplacer la photo' : '📎 Joindre une photo'}
+      <button type="button" className="btn-ghost" style={{ width: '100%', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => photoInput.current?.click()}>
+        <AttachIcon />
+        {newPhoto ? `Nouvelle photo : ${newPhoto.name}` : fillup.photo_path ? 'Remplacer la photo' : 'Joindre une photo'}
       </button>
       <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setNewPhoto(e.target.files?.[0] ?? null)} />
       <button className="btn btn-primary" disabled={busy}>
@@ -196,7 +198,7 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
                 setEditingId(editingId === f.id ? null : f.id)
               }}
             >
-              {f.photo_path ? <Thumb path={f.photo_path} /> : <div className="thumb" style={{ display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>⛽</div>}
+              {f.photo_path ? <Thumb path={f.photo_path} /> : <div className="thumb" style={{ display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><PumpIcon size={20} /></div>}
               <div className="body">
                 <div className="date">
                   {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}

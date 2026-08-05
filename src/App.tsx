@@ -8,6 +8,7 @@ import AuthScreen from './components/AuthScreen'
 import FillupForm from './components/FillupForm'
 import History from './components/History'
 import VehicleManager from './components/VehicleManager'
+import { HistoryIcon, PumpIcon, StatsIcon } from './components/icons'
 
 const Stats = lazy(() => import('./components/Stats'))
 
@@ -172,13 +173,13 @@ export default function App() {
       <nav className="tabs">
         <div className="inner">
           <button className={tab === 'new' ? 'active' : ''} onClick={() => setTab('new')}>
-            <span className="ico">⛽</span>Plein
+            <span className="ico"><PumpIcon /></span>Plein
           </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
-            <span className="ico">📒</span>Historique
+            <span className="ico"><HistoryIcon /></span>Historique
           </button>
           <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>
-            <span className="ico">📈</span>Stats
+            <span className="ico"><StatsIcon /></span>Stats
           </button>
         </div>
       </nav>

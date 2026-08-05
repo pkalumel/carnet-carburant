@@ -3,6 +3,7 @@ import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import { fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
 import type { Vehicle } from '../lib/types'
+import { AttachIcon, CameraIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -123,7 +124,7 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
         disabled={busy}
         onClick={() => quickInput.current?.click()}
       >
-        <span style={{ fontSize: 26 }}>📷</span>
+        <CameraIcon />
         <span>
           Capture rapide
           <small>Photographie l’écran de la pompe, encode plus tard</small>
@@ -220,9 +221,10 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
             type="button"
             className="btn-ghost"
             onClick={() => attachInput.current?.click()}
-            style={{ width: '100%' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >
-            {photo ? `📎 Photo jointe : ${photo.name}` : '📎 Joindre la photo de la pompe'}
+            <AttachIcon />
+            {photo ? `Photo jointe : ${photo.name}` : 'Joindre la photo de la pompe'}
           </button>
           <input
             ref={attachInput}

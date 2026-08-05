@@ -7,8 +7,8 @@ import type { Fillup, Vehicle } from '../lib/types'
 
 // Couleur de série validée (contraste, chroma, bande de luminance) sur surface blanche
 const DATA = '#2F6DB5'
-const GRID = '#dce3e9'
-const AXIS = '#5a6b7a'
+const GRID = '#e4e2da'
+const AXIS = '#6e7781'
 
 interface Props {
   fillups: Fillup[]
@@ -47,7 +47,7 @@ function Tip({ active, payload }: { active?: boolean; payload?: TipPayload[] }) 
   return (
     <div
       style={{
-        background: '#17212b', color: '#fff', borderRadius: 8, padding: '6px 10px',
+        background: '#141b24', color: '#fff', borderRadius: 8, padding: '6px 10px',
         fontSize: 13, fontFamily: 'var(--mono)', whiteSpace: 'pre-line',
       }}
     >
