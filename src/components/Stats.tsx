@@ -6,9 +6,9 @@ import { fmtConso, fmtEur, fmtKm, fmtPricePerL } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
 
 // Couleur de série validée (contraste, chroma, bande de luminance) sur surface blanche
-const DATA = '#3E8EDD'
-const GRID = '#272c34'
-const AXIS = '#9aa1ac'
+const DATA = '#2F6DB5'
+const GRID = '#e4e2da'
+const AXIS = '#6e7781'
 
 interface Props {
   fillups: Fillup[]
@@ -26,14 +26,14 @@ const monthLabel = (m: string) =>
 const dayLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 
-function Meter({ value, unit, label, chip }: { value: string; unit?: string; label: string; chip: string }) {
+function Meter({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
     <div>
-      <span className={`chip ${chip}`}>{label}</span>
-      <div className="meter-big num" style={{ marginTop: 10 }}>
+      <div className="meter-big">
         {value}
         {unit && <span className="meter-unit">{unit}</span>}
       </div>
+      <div className="meter-label">{label}</div>
     </div>
   )
 }
@@ -47,8 +47,8 @@ function Tip({ active, payload }: { active?: boolean; payload?: TipPayload[] }) 
   return (
     <div
       style={{
-        background: '#ffffff', color: '#12151a', borderRadius: 12, padding: '8px 12px',
-        fontSize: 13, fontWeight: 600, whiteSpace: 'pre-line',
+        background: '#141b24', color: '#fff', borderRadius: 8, padding: '6px 10px',
+        fontSize: 13, fontFamily: 'var(--mono)', whiteSpace: 'pre-line',
       }}
     >
       {payload[0].payload.tip}
@@ -86,18 +86,16 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
 
   return (
     <>
-      <section className="card light">
-        <h2>
-          En <span style={{ fontWeight: 400 }}>résumé</span>
-        </h2>
+      <section className="card">
+        <h2>En résumé</h2>
         <div className="meter-row">
-          <Meter value={num(summary.avgConso, 1)} unit="L/100" label="Conso moyenne" chip="chip-lime" />
-          <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" chip="chip-pink" />
-          <Meter value={num(summary.totalSpent, 2)} unit="€" label="Total dépensé" chip="chip-blue" />
-          <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label="Prix moyen" chip="chip-lime" />
+          <Meter value={num(summary.avgConso, 1)} unit="L/100" label="Conso moyenne" />
+          <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
+          <Meter value={num(summary.totalSpent, 2)} unit="€" label="Total dépensé" />
+          <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label="Prix moyen" />
         </div>
         {summary.avgConso == null && (
-          <p style={{ fontSize: 13, color: 'var(--muted-inv)', marginBottom: 0, marginTop: 14 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 0 }}>
             La consommation se calcule entre deux pleins complets avec kilométrage relevé
             {singleVehicle ? '.' : ' — choisis un véhicule en haut pour la voir.'}
           </p>

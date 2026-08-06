@@ -77,15 +77,12 @@ export default function App() {
   const filtered =
     vehicleFilter === 'all' ? fillups : fillups.filter((f) => f.vehicle_id === vehicleFilter)
   const userEmail = session.user.email ?? null
-  const firstName = userEmail
-    ? userEmail.split('@')[0].split(/[._-]/)[0].replace(/^./, (c) => c.toUpperCase())
-    : ''
 
   return (
     <>
       <header className="topbar">
         <span className="brand">
-          Salut <em>{firstName}</em>
+          Carnet <em>Carburant</em>
         </span>
         <select
           value={vehicleFilter}
