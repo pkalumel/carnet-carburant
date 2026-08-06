@@ -97,7 +97,7 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
   }
 
   return (
-    <form className="card" onSubmit={submit} style={{ borderColor: 'var(--accent)' }}>
+    <form className="card" onSubmit={submit} style={{ borderColor: 'var(--lime)' }}>
       <h2>{fillup.is_draft ? 'Compléter le plein' : 'Modifier le plein'}</h2>
       {photoUrl && <img className="photo-full" src={photoUrl} alt="Écran de la pompe" />}
       <label className="field">

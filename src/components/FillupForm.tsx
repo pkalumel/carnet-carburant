@@ -124,7 +124,9 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
         disabled={busy}
         onClick={() => quickInput.current?.click()}
       >
-        <CameraIcon />
+        <span className="cam">
+          <CameraIcon />
+        </span>
         <span>
           Capture rapide
           <small>Photographie l’écran de la pompe, encode plus tard</small>
@@ -195,10 +197,10 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
             />
           </label>
           <div className="field">
-            <span className="lbl" style={{ display: 'block', marginBottom: 5, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' }}>
+            <span style={{ display: 'block', marginBottom: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--muted)' }}>
               Prix au litre
             </span>
-            <div className="meter-big" style={{ fontSize: 22, paddingTop: 8 }}>
+            <div className="meter-big num" style={{ fontSize: 26, paddingTop: 8 }}>
               {fmtPricePerL(pricePerLiter)}
             </div>
           </div>
