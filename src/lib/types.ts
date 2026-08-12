@@ -2,6 +2,7 @@ export interface Vehicle {
   id: string
   name: string
   plate: string | null
+  fuel: string | null
   created_at: string
 }
 

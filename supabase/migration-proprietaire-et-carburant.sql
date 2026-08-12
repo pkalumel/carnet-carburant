@@ -1,47 +1,52 @@
 -- ============================================================
--- Carnet Carburant — schéma de base de données Supabase
+-- Migration : type de carburant + isolation par utilisateur
 -- À exécuter une seule fois dans : Dashboard > SQL Editor > New query
--- (installation existante : voir migration-proprietaire-et-carburant.sql)
+-- (le schéma de référence pour une installation neuve est schema.sql)
 -- ============================================================
 
--- Véhicules : chaque véhicule appartient à un utilisateur
-create table public.vehicles (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users(id) default auth.uid(),
-  name       text not null,
-  plate      text,
-  fuel       text,                                 -- Essence, Diesel, E85, GPL…
-  created_at timestamptz not null default now()
-);
-
--- Pleins de carburant
-create table public.fillups (
-  id               uuid primary key default gen_random_uuid(),
-  vehicle_id       uuid not null references public.vehicles(id) on delete cascade,
-  filled_at        timestamptz not null default now(),
-  odometer_km      integer check (odometer_km > 0),
-  liters           numeric(7,2) check (liters > 0),
-  total_price      numeric(8,2) check (total_price >= 0),
-  price_per_liter  numeric(6,3) generated always as
-                     (case when liters > 0 then round(total_price / liters, 3) end) stored,
-  is_full          boolean not null default true,   -- plein complet (à ras bord) ou partiel
-  is_draft         boolean not null default false,  -- capture rapide à compléter plus tard
-  photo_path       text,                            -- chemin dans le bucket pump-photos
-  notes            text,
-  created_by       uuid default auth.uid(),
-  created_by_email text,
-  created_at       timestamptz not null default now()
-);
-
-create index fillups_vehicle_date on public.fillups (vehicle_id, filled_at desc);
+-- ------------------------------------------------------------
+-- 1. Type de carburant sur la fiche véhicule
+-- ------------------------------------------------------------
+alter table public.vehicles add column if not exists fuel text;
 
 -- ------------------------------------------------------------
--- Sécurité : chaque utilisateur ne voit et ne gère que ses
--- propres véhicules et les pleins qui s'y rattachent.
--- Ne pas laisser les inscriptions publiques ouvertes (voir README).
+-- 2. Propriétaire du véhicule
 -- ------------------------------------------------------------
-alter table public.vehicles enable row level security;
-alter table public.fillups  enable row level security;
+alter table public.vehicles
+  add column if not exists user_id uuid references auth.users(id) default auth.uid();
+
+-- Reprise de l'existant : chaque véhicule revient à l'auteur de son
+-- premier plein (fillups.created_by est rempli depuis l'origine).
+update public.vehicles v
+set user_id = sub.created_by
+from (
+  select distinct on (vehicle_id) vehicle_id, created_by
+  from public.fillups
+  where created_by is not null
+  order by vehicle_id, created_at asc
+) sub
+where v.id = sub.vehicle_id
+  and v.user_id is null;
+
+-- Véhicules sans aucun plein : attribués au plus ancien compte
+-- (le compte « administrateur » de la famille).
+update public.vehicles
+set user_id = (select id from auth.users order by created_at asc limit 1)
+where user_id is null;
+
+alter table public.vehicles alter column user_id set not null;
+
+-- ------------------------------------------------------------
+-- 3. Politiques : chacun ne voit que SES véhicules et SES pleins
+-- ------------------------------------------------------------
+drop policy if exists "famille : lire les véhicules"    on public.vehicles;
+drop policy if exists "famille : ajouter un véhicule"   on public.vehicles;
+drop policy if exists "famille : modifier un véhicule"  on public.vehicles;
+drop policy if exists "famille : supprimer un véhicule" on public.vehicles;
+drop policy if exists "famille : lire les pleins"       on public.fillups;
+drop policy if exists "famille : ajouter un plein"      on public.fillups;
+drop policy if exists "famille : modifier un plein"     on public.fillups;
+drop policy if exists "famille : supprimer un plein"    on public.fillups;
 
 create policy "proprio : lire ses véhicules" on public.vehicles
   for select to authenticated using (user_id = auth.uid());
@@ -52,6 +57,7 @@ create policy "proprio : modifier ses véhicules" on public.vehicles
 create policy "proprio : supprimer ses véhicules" on public.vehicles
   for delete to authenticated using (user_id = auth.uid());
 
+-- Les pleins suivent la propriété du véhicule
 create policy "proprio : lire ses pleins" on public.fillups
   for select to authenticated
   using (exists (select 1 from public.vehicles v where v.id = vehicle_id and v.user_id = auth.uid()));
@@ -67,11 +73,11 @@ create policy "proprio : supprimer ses pleins" on public.fillups
   using (exists (select 1 from public.vehicles v where v.id = vehicle_id and v.user_id = auth.uid()));
 
 -- ------------------------------------------------------------
--- Stockage des photos de pompe (bucket privé, photos par uploadeur)
+-- 4. Photos : chacun ne voit que les siennes (owner_id = uploadeur)
 -- ------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('pump-photos', 'pump-photos', false)
-on conflict (id) do nothing;
+drop policy if exists "famille : voir les photos"     on storage.objects;
+drop policy if exists "famille : envoyer une photo"   on storage.objects;
+drop policy if exists "famille : supprimer une photo" on storage.objects;
 
 create policy "proprio : voir ses photos" on storage.objects
   for select to authenticated

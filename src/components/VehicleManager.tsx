@@ -9,9 +9,12 @@ interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
+const FUELS = ['Essence', 'Diesel', 'E85', 'GPL', 'Hybride']
+
 export default function VehicleManager({ vehicles, fillups, onChanged, showToast }: Props) {
   const [name, setName] = useState('')
   const [plate, setPlate] = useState('')
+  const [fuel, setFuel] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [confirmText, setConfirmText] = useState('')
@@ -21,9 +24,10 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
     if (!name.trim()) return
     setBusy(true)
     try {
-      await addVehicle(name.trim(), plate.trim() || null)
+      await addVehicle(name.trim(), plate.trim() || null, fuel)
       setName('')
       setPlate('')
+      setFuel(null)
       showToast('Véhicule ajouté', 'ok')
       onChanged()
     } catch (err) {
@@ -64,6 +68,7 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
                 <div className="nums">{v.name}</div>
                 <div className="sub">
                   {v.plate ? `${v.plate} · ` : ''}
+                  {v.fuel ? `${v.fuel} · ` : ''}
                   {n === 0 ? 'aucun plein' : n === 1 ? '1 plein' : `${n} pleins`}
                 </div>
               </div>
@@ -143,6 +148,21 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
               placeholder="1-ABC-123"
             />
           </label>
+        </div>
+        <div className="field">
+          <span className="lbl">Carburant</span>
+          <div className="chips wrap">
+            {FUELS.map((f) => (
+              <button
+                type="button"
+                key={f}
+                className={fuel === f ? 'chip active' : 'chip'}
+                onClick={() => setFuel(fuel === f ? null : f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
         <button className="btn btn-primary" disabled={busy}>
           Ajouter le véhicule

@@ -13,17 +13,18 @@ interface Props {
 
 /** CSV « Excel FR » : séparateur ; virgule décimale, BOM UTF-8 */
 function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
-  const name = (id: string) => vehicles.find((v) => v.id === id)?.name ?? id
+  const byId = (id: string) => vehicles.find((v) => v.id === id)
   const dec = (v: number | null) => (v == null ? '' : String(v).replace('.', ','))
   const esc = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
   const rows = [
-    'date;vehicule;litres;prix_total_eur;prix_litre_eur;compteur_km;plein_complet;notes;auteur',
+    'date;vehicule;carburant;litres;prix_total_eur;prix_litre_eur;compteur_km;plein_complet;notes;auteur',
     ...fillups
       .filter((f) => !f.is_draft)
       .map((f) =>
         [
           new Date(f.filled_at).toLocaleString('fr-FR'),
-          esc(name(f.vehicle_id)),
+          esc(byId(f.vehicle_id)?.name ?? f.vehicle_id),
+          esc(byId(f.vehicle_id)?.fuel ?? ''),
           dec(f.liters),
           dec(f.total_price),
           dec(f.price_per_liter != null ? Math.round(f.price_per_liter * 1000) / 1000 : null),

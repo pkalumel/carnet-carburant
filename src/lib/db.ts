@@ -22,12 +22,20 @@ export async function loadVehicles(): Promise<Vehicle[]> {
   }
 }
 
-export async function addVehicle(name: string, plate: string | null): Promise<Vehicle> {
-  const { data, error } = await supabase
+export async function addVehicle(
+  name: string,
+  plate: string | null,
+  fuel: string | null,
+): Promise<Vehicle> {
+  let { data, error } = await supabase
     .from('vehicles')
-    .insert({ name, plate })
+    .insert({ name, plate, fuel })
     .select()
     .single()
+  if (error && error.message.includes('fuel')) {
+    // Base pas encore migrée (colonne fuel absente) : on insère sans le carburant
+    ;({ data, error } = await supabase.from('vehicles').insert({ name, plate }).select().single())
+  }
   if (error) throw new Error(`Ajout du véhicule impossible : ${error.message}`)
   return data as Vehicle
 }
