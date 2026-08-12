@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import { deleteFillup, getPhotoUrl, updateFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import {
@@ -150,6 +150,9 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
 // Liste de l'historique
 // ------------------------------------------------------------
 
+const monthOf = (iso: string) =>
+  new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+
 export default function History({ fillups, vehicles, onChanged, showToast }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '?'
@@ -158,9 +161,11 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
   if (fillups.length === 0) {
     return (
       <div className="card empty">
-        Aucun plein pour l’instant.
-        <br />
-        Le premier s’enregistre dans l’onglet « Plein ».
+        <div className="empty-ico">
+          <PumpIcon size={30} />
+        </div>
+        <div className="empty-title">Aucun plein pour l’instant</div>
+        Le premier s’enregistre dans l’onglet « Plein », en bas de l’écran.
       </div>
     )
   }
@@ -168,64 +173,71 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
   return (
     <>
       {drafts.length > 0 && (
-        <div className="netbanner pending" style={{ borderRadius: 10 }}>
+        <div className="netbanner pending" style={{ margin: 0 }}>
           {drafts.length === 1 ? '1 plein à compléter' : `${drafts.length} pleins à compléter`} — touche-le dans la liste
         </div>
       )}
-      <section className="card">
-        <h2>Historique</h2>
-        {fillups.map((f) =>
-          editingId === f.id && !f.pending ? (
-            <Editor
-              key={f.id}
-              fillup={f}
-              showToast={showToast}
-              onDone={() => {
-                setEditingId(null)
-                onChanged()
-              }}
-            />
-          ) : (
-            <button
-              key={f.id}
-              className="fillup-item"
-              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', padding: '12px 0', font: 'inherit', cursor: 'pointer' }}
-              onClick={() => {
-                if (f.pending) {
-                  showToast('Ce plein sera modifiable après synchronisation', 'err')
-                  return
-                }
-                setEditingId(editingId === f.id ? null : f.id)
-              }}
-            >
-              {f.photo_path ? <Thumb path={f.photo_path} /> : <div className="thumb" style={{ display: 'grid', placeItems: 'center', color: 'var(--muted)' }}><PumpIcon size={20} /></div>}
-              <div className="body">
-                <div className="date">
-                  {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
-                  {f.is_draft && <span className="badge badge-draft">À compléter</span>}
-                  {f.pending && <span className="badge badge-pending">En attente</span>}
-                  {!f.is_full && !f.is_draft && <span className="badge badge-partial">Partiel</span>}
-                </div>
-                {f.is_draft ? (
-                  <div className="sub" style={{ marginTop: 4 }}>
-                    Photo enregistrée — touche ici pour encoder les chiffres
-                  </div>
+      {fillups.map((f, i) => {
+        const label = monthOf(f.filled_at)
+        const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
+        return (
+          <Fragment key={f.id}>
+            {showLabel && <div className="month-label">{label}</div>}
+            {editingId === f.id && !f.pending ? (
+              <Editor
+                fillup={f}
+                showToast={showToast}
+                onDone={() => {
+                  setEditingId(null)
+                  onChanged()
+                }}
+              />
+            ) : (
+              <button
+                className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
+                onClick={() => {
+                  if (f.pending) {
+                    showToast('Ce plein sera modifiable après synchronisation', 'err')
+                    return
+                  }
+                  setEditingId(editingId === f.id ? null : f.id)
+                }}
+              >
+                {f.photo_path ? (
+                  <Thumb path={f.photo_path} />
                 ) : (
-                  <>
-                    <div className="nums">
-                      {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
-                    </div>
-                    <div className="sub">
-                      {fmtPricePerL(f.price_per_liter)} · {fmtKm(f.odometer_km)}
-                      {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
-                    </div>
-                  </>
+                  <div className="thumb ph">
+                    <PumpIcon size={22} />
+                  </div>
                 )}
-              </div>
-            </button>
-          ),
-        )}
-      </section>
+                <div className="body">
+                  <div className="date">
+                    {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
+                    {f.is_draft && <span className="badge badge-draft">À compléter</span>}
+                    {f.pending && <span className="badge badge-pending">En attente</span>}
+                    {!f.is_full && !f.is_draft && <span className="badge badge-partial">Partiel</span>}
+                  </div>
+                  {f.is_draft ? (
+                    <div className="sub" style={{ marginTop: 4 }}>
+                      Photo enregistrée — touche ici pour encoder les chiffres
+                    </div>
+                  ) : (
+                    <>
+                      <div className="nums">
+                        {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
+                      </div>
+                      <div className="sub">
+                        {fmtPricePerL(f.price_per_liter)} · {fmtKm(f.odometer_km)}
+                        {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </button>
+            )}
+          </Fragment>
+        )
+      })}
     </>
   )
 }

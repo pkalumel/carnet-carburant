@@ -81,21 +81,39 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
     : []
 
   if (fillups.length === 0) {
-    return <div className="card empty">Les statistiques apparaîtront après les premiers pleins.</div>
+    return (
+      <div className="card empty">
+        <div className="empty-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 20V4" />
+            <path d="M4 20h16" />
+            <path d="M7.5 15.5l3.5-4 3 2.5 4.5-6" />
+          </svg>
+        </div>
+        <div className="empty-title">Pas encore de statistiques</div>
+        Elles apparaîtront après les premiers pleins enregistrés.
+      </div>
+    )
   }
 
   return (
     <>
-      <section className="card">
+      <section className="card hero">
         <h2>En résumé</h2>
+        <div className="meter-lead-row">
+          <div className="meter-big lead">
+            {num(summary.totalSpent, 2)}
+            <span className="meter-unit">€</span>
+          </div>
+          <div className="meter-label">Total dépensé</div>
+        </div>
         <div className="meter-row">
           <Meter value={num(summary.avgConso, 1)} unit="L/100" label="Conso moyenne" />
           <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
-          <Meter value={num(summary.totalSpent, 2)} unit="€" label="Total dépensé" />
           <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label="Prix moyen" />
         </div>
         {summary.avgConso == null && (
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 0 }}>
+          <p className="hero-note">
             La consommation se calcule entre deux pleins complets avec kilométrage relevé
             {singleVehicle ? '.' : ' — choisis un véhicule en haut pour la voir.'}
           </p>

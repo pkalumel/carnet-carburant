@@ -81,24 +81,36 @@ export default function App() {
   return (
     <>
       <header className="topbar">
-        <span className="brand">
-          Carnet <em>Carburant</em>
-        </span>
-        <select
-          value={vehicleFilter}
-          onChange={(e) => setVehicleFilter(e.target.value)}
-          aria-label="Filtrer par véhicule"
-        >
-          <option value="all">Tous les véhicules</option>
-          {vehicles.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </select>
-        <button className="signout" onClick={() => void supabase.auth.signOut()}>
-          Sortir
-        </button>
+        <div className="brand-row">
+          <span className="brand">
+            <span className="mark">
+              <PumpIcon size={18} />
+            </span>
+            Carnet <em>Carburant</em>
+          </span>
+          <button className="signout" onClick={() => void supabase.auth.signOut()}>
+            Sortir
+          </button>
+        </div>
+        {vehicles.length > 0 && (
+          <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
+            <button
+              className={vehicleFilter === 'all' ? 'chip active' : 'chip'}
+              onClick={() => setVehicleFilter('all')}
+            >
+              Tous
+            </button>
+            {vehicles.map((v) => (
+              <button
+                key={v.id}
+                className={vehicleFilter === v.id ? 'chip active' : 'chip'}
+                onClick={() => setVehicleFilter(v.id)}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {!online && (
@@ -119,7 +131,11 @@ export default function App() {
             {vehicles.length === 0 ? (
               <>
                 <div className="card empty">
-                  Bienvenue ! Commence par ajouter le premier véhicule de la famille.
+                  <div className="empty-ico">
+                    <PumpIcon size={30} />
+                  </div>
+                  <div className="empty-title">Bienvenue !</div>
+                  Commence par ajouter le premier véhicule de la famille juste en dessous.
                 </div>
                 <VehicleManager vehicles={vehicles} onChanged={() => void refresh()} showToast={showToast} />
               </>
