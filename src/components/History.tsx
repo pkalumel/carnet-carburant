@@ -6,7 +6,7 @@ import {
 } from '../lib/format'
 import { consumptionSeries, type ConsoPoint } from '../lib/stats'
 import type { Fillup, Vehicle } from '../lib/types'
-import { AttachIcon, PumpIcon } from './icons'
+import { AttachIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
@@ -221,13 +221,13 @@ function Editor({
       </button>
       <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setNewPhoto(e.target.files?.[0] ?? null)} />
       <button className="btn btn-primary" disabled={busy}>
-        {busy ? 'Enregistrement…' : 'Enregistrer'}
+        <SaveIcon /> {busy ? 'Enregistrement…' : 'Enregistrer'}
       </button>
       <button type="button" className="btn-ghost" style={{ width: '100%', marginTop: 8 }} onClick={onDone} disabled={busy}>
-        Annuler
+        <XIcon /> Annuler
       </button>
       <button type="button" className="btn-delete" onClick={remove} disabled={busy}>
-        Supprimer ce plein
+        <TrashIcon /> Supprimer ce plein
       </button>
     </form>
   )

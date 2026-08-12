@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Fillup, Vehicle } from '../lib/types'
 import VehicleManager from './VehicleManager'
+import { DownloadIcon, KeyIcon, LogoutIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -87,7 +88,7 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
           L’export CSV s’ouvre dans Excel, Numbers ou Google Sheets.
         </p>
         <button className="btn-ghost" style={{ width: '100%' }} onClick={exportCsv} disabled={realCount === 0}>
-          Exporter tous les pleins en CSV
+          <DownloadIcon /> Exporter tous les pleins en CSV
         </button>
       </section>
 
@@ -107,7 +108,7 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
             />
           </label>
           <button className="btn-ghost" style={{ width: '100%' }} disabled={busy || newPassword.length === 0}>
-            Changer le mot de passe
+            <KeyIcon /> Changer le mot de passe
           </button>
         </form>
         <button
@@ -115,7 +116,7 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
           style={{ width: '100%', marginTop: 12 }}
           onClick={() => void supabase.auth.signOut()}
         >
-          Se déconnecter
+          <LogoutIcon /> Se déconnecter
         </button>
       </section>
     </>

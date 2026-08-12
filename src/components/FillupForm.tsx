@@ -3,7 +3,7 @@ import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import { fmtKm, fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
-import { AttachIcon, CameraIcon } from './icons'
+import { AttachIcon, CameraIcon, SaveIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -345,7 +345,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
         )}
 
         <button className="btn btn-primary" disabled={busy}>
-          {busy ? 'Enregistrement…' : 'Enregistrer le plein'}
+          <SaveIcon /> {busy ? 'Enregistrement…' : 'Enregistrer le plein'}
         </button>
       </form>
     </>

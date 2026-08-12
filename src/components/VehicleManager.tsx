@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { addVehicle, deleteVehicle, updateVehicle } from '../lib/db'
 import type { Fillup, Vehicle } from '../lib/types'
+import { PencilIcon, PlusIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -96,7 +97,7 @@ function Editor({
       </div>
       <FuelChips value={fuel} onChange={setFuel} />
       <button className="btn btn-primary" disabled={busy}>
-        Enregistrer
+        <SaveIcon /> Enregistrer
       </button>
       <button
         type="button"
@@ -105,11 +106,11 @@ function Editor({
         onClick={() => onDone(false)}
         disabled={busy}
       >
-        Annuler
+        <XIcon /> Annuler
       </button>
       {!confirming && (
         <button type="button" className="btn-delete" onClick={() => setConfirming(true)} disabled={busy}>
-          Supprimer ce véhicule
+          <TrashIcon /> Supprimer ce véhicule
         </button>
       )}
       {confirming && (
@@ -131,7 +132,7 @@ function Editor({
           )}
           <div className="row-actions">
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => setConfirming(false)}>
-              Annuler
+              <XIcon /> Annuler
             </button>
             <button
               type="button"
@@ -139,7 +140,7 @@ function Editor({
               disabled={busy || (fillupCount > 0 && !nameMatches)}
               onClick={() => void remove()}
             >
-              Supprimer définitivement
+              <TrashIcon /> Supprimer définitivement
             </button>
           </div>
         </div>
@@ -203,8 +204,8 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
                 {n === 0 ? 'aucun plein' : n === 1 ? '1 plein' : `${n} pleins`}
               </div>
             </div>
-            <button className="btn-ghost" onClick={() => setEditingId(v.id)}>
-              Modifier
+            <button className="btn-icon" aria-label={`Modifier ${v.name}`} onClick={() => setEditingId(v.id)}>
+              <PencilIcon />
             </button>
           </div>
         )
@@ -233,7 +234,7 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
         </div>
         <FuelChips value={fuel} onChange={setFuel} />
         <button className="btn btn-primary" disabled={busy}>
-          Ajouter le véhicule
+          <PlusIcon /> Ajouter le véhicule
         </button>
       </form>
     </section>

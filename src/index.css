@@ -381,7 +381,10 @@ input.error { border-color: var(--danger); }
 /* ---------- Boutons ---------- */
 button { font-family: var(--sans); cursor: pointer; }
 .btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   border: none;
   border-radius: 14px;
@@ -391,6 +394,22 @@ button { font-family: var(--sans); cursor: pointer; }
   letter-spacing: 0.01em;
   transition: transform 0.12s ease;
 }
+
+/* Bouton carré à icône seule (actions de ligne : modifier, etc.) */
+.btn-icon {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-80);
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.btn-icon:active { background: var(--ink-08); }
 .btn:active { transform: scale(0.98); }
 .btn-primary {
   background: var(--ink);
@@ -451,6 +470,10 @@ button { font-family: var(--sans); cursor: pointer; }
   font-size: 14px;
   font-weight: 600;
   transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .btn-ghost:active { background: var(--ink-08); }
 .btn-danger { border-color: rgba(179, 64, 47, 0.3); color: var(--danger); }
@@ -754,7 +777,10 @@ nav.tabs button.active {
 
 /* Suppression reléguée en bas de la feuille, hors du chemin du pouce */
 .btn-delete {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   background: none;
   border: none;
