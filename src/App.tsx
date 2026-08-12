@@ -10,6 +10,7 @@ import History from './components/History'
 import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
 import { GearIcon, HistoryIcon, PumpIcon, StatsIcon } from './components/icons'
+import { usePwaUpdate } from './lib/pwa'
 
 const Stats = lazy(() => import('./components/Stats'))
 
@@ -28,6 +29,7 @@ export default function App() {
     () => localStorage.getItem(VEHICLE_KEY) ?? 'all',
   )
   const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
+  const update = usePwaUpdate()
 
   const showToast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
     setToast({ msg, kind })
@@ -121,6 +123,11 @@ export default function App() {
         )}
       </header>
 
+      {update.ready && (
+        <button className="netbanner update banner-action" onClick={update.apply}>
+          Nouvelle version disponible — Mettre à jour
+        </button>
+      )}
       {!online && (
         <div className="netbanner offline">
           Hors ligne — les pleins saisis seront synchronisés au retour du réseau

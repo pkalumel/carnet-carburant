@@ -162,6 +162,7 @@ html, body {
 }
 .netbanner.offline { background: var(--accent); color: var(--ink); }
 .netbanner.pending { background: var(--accent-soft); color: var(--ink-80); }
+.netbanner.update { background: var(--ink); color: #fff; width: calc(100% - 32px); }
 /* Bannière tappable : un raccourci, pas une consigne */
 button.banner-action {
   border: none;
