@@ -1,12 +1,13 @@
+import { useMemo, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { consumptionSeries, monthlyCosts, priceSeries, summarize } from '../lib/stats'
+import { consumptionSeries, monthlyCostsByVehicle, priceSeries, summarize } from '../lib/stats'
 import { fmtConso, fmtEur, fmtKm, fmtPricePerL } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
 
-// Couleur de série validée (contraste, chroma, bande de luminance) sur surface blanche
-const DATA = '#2F6DB5'
+// Série encre pétrole + déclinaisons : accordées à l'identité, contrastées sur blanc
+const SERIES = ['#26303c', '#dd9f0e', '#4a6fa5', '#2e7d5b', '#b3402f', '#7d5ba6']
 const GRID = '#e4e2da'
 const AXIS = '#6e7781'
 
@@ -15,6 +16,8 @@ interface Props {
   vehicles: Vehicle[]
   vehicleFilter: string
 }
+
+type Period = '3m' | '12m' | 'all'
 
 const num = (v: number | null, digits: number) =>
   v == null
@@ -47,7 +50,7 @@ function Tip({ active, payload }: { active?: boolean; payload?: TipPayload[] }) 
   return (
     <div
       style={{
-        background: '#141b24', color: '#fff', borderRadius: 8, padding: '6px 10px',
+        background: '#16202b', color: '#fff', borderRadius: 8, padding: '6px 10px',
         fontSize: 13, fontFamily: 'var(--mono)', whiteSpace: 'pre-line',
       }}
     >
@@ -57,28 +60,52 @@ function Tip({ active, payload }: { active?: boolean; payload?: TipPayload[] }) 
 }
 
 export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
-  const summary = summarize(fillups)
-  const months = monthlyCosts(fillups).slice(-12).map((m) => ({
-    ...m,
-    label: monthLabel(m.month),
-    tip: `${monthLabel(m.month)}\n${fmtEur(m.total)}`,
-  }))
+  const [period, setPeriod] = useState<Period>('12m')
 
+  const scoped = useMemo(() => {
+    if (period === 'all') return fillups
+    const cutoff = new Date()
+    cutoff.setMonth(cutoff.getMonth() - (period === '3m' ? 3 : 12))
+    const iso = cutoff.toISOString()
+    return fillups.filter((f) => f.filled_at >= iso)
+  }, [fillups, period])
+
+  const summary = summarize(scoped)
   const singleVehicle = vehicleFilter !== 'all'
+  const vehicleColor = new Map(vehicles.map((v, i) => [v.id, SERIES[i % SERIES.length]]))
+
+  const months = useMemo(
+    () =>
+      monthlyCostsByVehicle(scoped).map((m) => ({
+        ...m.totals,
+        label: monthLabel(m.month),
+        tip: [
+          monthLabel(m.month),
+          ...vehicles
+            .filter((v) => m.totals[v.id])
+            .map((v) => `${v.name} ${fmtEur(m.totals[v.id])}`),
+          ...(Object.keys(m.totals).length > 1 ? [`Total ${fmtEur(m.total)}`] : []),
+        ].join('\n'),
+      })),
+    [scoped, vehicles],
+  )
+
   const conso = singleVehicle
-    ? consumptionSeries(fillups).map((p) => ({
+    ? consumptionSeries(scoped).map((p) => ({
         ...p,
         label: dayLabel(p.date),
         tip: `${dayLabel(p.date)}\n${fmtConso(p.per100)} sur ${fmtKm(p.km)}`,
       }))
     : []
   const prices = singleVehicle
-    ? priceSeries(fillups).map((p) => ({
+    ? priceSeries(scoped).map((p) => ({
         ...p,
         label: dayLabel(p.date),
         tip: `${dayLabel(p.date)}\n${fmtPricePerL(p.price)}`,
       }))
     : []
+
+  const stackedVehicles = vehicles.filter((v) => months.some((m) => (m as Record<string, unknown>)[v.id]))
 
   if (fillups.length === 0) {
     return (
@@ -98,6 +125,18 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
 
   return (
     <>
+      <div className="seg" role="tablist" aria-label="Période">
+        {(['3m', '12m', 'all'] as const).map((p) => (
+          <button
+            key={p}
+            className={period === p ? 'active' : ''}
+            onClick={() => setPeriod(p)}
+          >
+            {p === '3m' ? '3 mois' : p === '12m' ? '12 mois' : 'Tout'}
+          </button>
+        ))}
+      </div>
+
       <section className="card hero">
         <h2>En résumé</h2>
         <div className="meter-lead-row">
@@ -129,7 +168,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={DATA} strokeWidth={2} dot={{ r: 3, fill: DATA, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -143,10 +182,30 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} />
-              <Tooltip content={<Tip />} cursor={{ fill: 'rgba(47, 109, 181, 0.08)' }} />
-              <Bar isAnimationActive={false} dataKey="total" fill={DATA} radius={[4, 4, 0, 0]} maxBarSize={36} />
+              <Tooltip content={<Tip />} cursor={{ fill: 'rgba(38, 48, 60, 0.06)' }} />
+              {(singleVehicle ? vehicles.filter((v) => v.id === vehicleFilter) : stackedVehicles).map((v, i, arr) => (
+                <Bar
+                  key={v.id}
+                  isAnimationActive={false}
+                  dataKey={v.id}
+                  stackId="mois"
+                  fill={vehicleColor.get(v.id)}
+                  radius={i === arr.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                  maxBarSize={36}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
+          {!singleVehicle && stackedVehicles.length > 1 && (
+            <div className="legend">
+              {stackedVehicles.map((v) => (
+                <span key={v.id} className="legend-item">
+                  <span className="dot" style={{ background: vehicleColor.get(v.id) }} />
+                  {v.name}
+                </span>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -159,7 +218,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(2)} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={DATA} strokeWidth={2} dot={{ r: 3, fill: DATA, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -169,14 +228,18 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
         <section className="card">
           <h2>Par véhicule</h2>
           {vehicles.map((v) => {
-            const s = summarize(fillups.filter((f) => f.vehicle_id === v.id))
-            if (s.count === 0) return null
+            const s = summarize(scoped.filter((f) => f.vehicle_id === v.id))
             return (
               <div key={v.id} className="fillup-item">
                 <div className="body">
-                  <div className="nums">{v.name}</div>
+                  <div className="nums">
+                    <span className="dot" style={{ background: vehicleColor.get(v.id), marginRight: 8 }} />
+                    {v.name}
+                  </div>
                   <div className="sub">
-                    {s.count} pleins · {fmtEur(s.totalSpent)} · {s.avgConso != null ? fmtConso(s.avgConso) : 'conso —'}
+                    {s.count === 0
+                      ? 'aucun plein sur la période'
+                      : `${s.count} pleins · ${fmtEur(s.totalSpent)} · ${s.avgConso != null ? fmtConso(s.avgConso) : 'conso —'}`}
                   </div>
                 </div>
               </div>

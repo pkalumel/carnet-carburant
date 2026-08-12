@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { deleteFillup, getPhotoUrl, updateFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import {
-  fmtDateTime, fmtEur, fmtKm, fmtLiters, fmtPricePerL, parseDecimal, toLocalInputValue,
+  fmtConso, fmtDateTime, fmtEur, fmtKm, fmtLiters, fmtPricePerL, parseDecimal, toLocalInputValue,
 } from '../lib/format'
+import { consumptionSeries, type ConsoPoint } from '../lib/stats'
 import type { Fillup, Vehicle } from '../lib/types'
 import { AttachIcon, PumpIcon } from './icons'
 
@@ -177,6 +178,32 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
   const drafts = fillups.filter((f) => f.is_draft)
   const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
 
+  // Distance et conso de chaque plein (période close par ce plein), par véhicule
+  const consoByFillup = useMemo(() => {
+    const map = new Map<string, ConsoPoint>()
+    const byVehicle = new Map<string, typeof fillups>()
+    for (const f of fillups) {
+      const g = byVehicle.get(f.vehicle_id)
+      if (g) g.push(f)
+      else byVehicle.set(f.vehicle_id, [f])
+    }
+    for (const [vid, group] of byVehicle) {
+      for (const p of consumptionSeries(group)) map.set(`${vid}|${p.date}`, p)
+    }
+    return map
+  }, [fillups])
+
+  // Total dépensé par mois affiché (liste éventuellement filtrée par véhicule)
+  const monthTotals = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const f of fillups) {
+      if (f.total_price == null) continue
+      const label = monthOf(f.filled_at)
+      map.set(label, (map.get(label) ?? 0) + f.total_price)
+    }
+    return map
+  }, [fillups])
+
   // La feuille ouverte fige le défilement de la page derrière
   useEffect(() => {
     if (!editing) return
@@ -201,16 +228,25 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
   return (
     <>
       {drafts.length > 0 && (
-        <div className="netbanner pending" style={{ margin: 0 }}>
-          {drafts.length === 1 ? '1 plein à compléter' : `${drafts.length} pleins à compléter`} — touche-le dans la liste
-        </div>
+        <button
+          className="netbanner pending banner-action"
+          onClick={() => setEditingId(drafts[0].id)}
+        >
+          {drafts.length === 1 ? '1 plein à compléter' : `${drafts.length} pleins à compléter`} — ouvrir
+        </button>
       )}
       {fillups.map((f, i) => {
         const label = monthOf(f.filled_at)
         const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
+        const conso = consoByFillup.get(`${f.vehicle_id}|${f.filled_at}`)
         return (
           <Fragment key={f.id}>
-            {showLabel && <div className="month-label">{label}</div>}
+            {showLabel && (
+              <div className="month-label">
+                {label}
+                <span className="month-total">{fmtEur(monthTotals.get(label) ?? null)}</span>
+              </div>
+            )}
             <button
               className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
               onClick={() => {
@@ -245,7 +281,12 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
                       {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
                     </div>
                     <div className="sub">
-                      {fmtPricePerL(f.price_per_liter)} · {fmtKm(f.odometer_km)}
+                      {conso
+                        ? `${conso.km.toLocaleString('fr-FR')} km · ${fmtConso(conso.per100)} · ${fmtPricePerL(f.price_per_liter)}`
+                        : fmtPricePerL(f.price_per_liter)}
+                    </div>
+                    <div className="sub2">
+                      {fmtKm(f.odometer_km)}
                       {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
                     </div>
                   </>

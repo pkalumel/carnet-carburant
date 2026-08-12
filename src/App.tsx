@@ -7,12 +7,13 @@ import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
 import FillupForm from './components/FillupForm'
 import History from './components/History'
+import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
-import { HistoryIcon, PumpIcon, StatsIcon } from './components/icons'
+import { GearIcon, HistoryIcon, PumpIcon, StatsIcon } from './components/icons'
 
 const Stats = lazy(() => import('./components/Stats'))
 
-type Tab = 'new' | 'history' | 'stats'
+type Tab = 'new' | 'history' | 'stats' | 'settings'
 
 const VEHICLE_KEY = 'carnet:vehicle'
 
@@ -26,7 +27,6 @@ export default function App() {
   const [vehicleFilter, setVehicleFilter] = useState<string>(
     () => localStorage.getItem(VEHICLE_KEY) ?? 'all',
   )
-  const [showGarage, setShowGarage] = useState(false)
   const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
 
   const showToast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
@@ -42,7 +42,15 @@ export default function App() {
   }, [])
 
   const refresh = useCallback(async () => {
-    const [v, f, outbox] = await Promise.all([loadVehicles(), loadFillups(), listOutbox()])
+    let [v, f] = await Promise.all([loadVehicles(), loadFillups()])
+    const outbox = await listOutbox()
+    // Course possible juste après la connexion : la requête part avant que la
+    // session soit active et retombe sur un cache vide alors que des pleins
+    // existent. Un nouvel essai après un court délai suffit.
+    if (v.length === 0 && f.some((x) => !x.pending)) {
+      await new Promise((r) => setTimeout(r, 800))
+      ;[v, f] = await Promise.all([loadVehicles(), loadFillups()])
+    }
     setVehicles(v)
     setFillups(f)
     setPendingCount(outbox.length)
@@ -88,12 +96,9 @@ export default function App() {
             </span>
             Carnet <em>Carburant</em>
           </span>
-          <button className="signout" onClick={() => void supabase.auth.signOut()}>
-            Sortir
-          </button>
         </div>
         {/* Le filtre est un concept de consultation : pas sur l'écran de saisie */}
-        {tab !== 'new' && vehicles.length > 0 && (
+        {(tab === 'history' || tab === 'stats') && vehicles.length > 0 && (
           <div className="chips-wrap">
             <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
               <button
@@ -163,12 +168,6 @@ export default function App() {
                     void refresh()
                   }}
                 />
-                <button className="btn-ghost" onClick={() => setShowGarage(!showGarage)}>
-                  {showGarage ? 'Masquer les véhicules' : 'Gérer les véhicules'}
-                </button>
-                {showGarage && (
-                  <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={() => void refresh()} showToast={showToast} />
-                )}
               </>
             )}
           </>
@@ -188,6 +187,16 @@ export default function App() {
             <Stats fillups={filtered} vehicles={vehicles} vehicleFilter={vehicleFilter} />
           </Suspense>
         )}
+
+        {tab === 'settings' && (
+          <Settings
+            vehicles={vehicles}
+            fillups={fillups}
+            userEmail={userEmail}
+            onChanged={() => void refresh()}
+            showToast={showToast}
+          />
+        )}
       </main>
 
       <nav className="tabs">
@@ -200,6 +209,9 @@ export default function App() {
           </button>
           <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>
             <span className="ico"><StatsIcon /></span>Stats
+          </button>
+          <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+            <span className="ico"><GearIcon /></span>Réglages
           </button>
         </div>
       </nav>

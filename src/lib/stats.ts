@@ -55,6 +55,31 @@ export function monthlyCosts(fillups: Fillup[]): MonthCost[] {
     .sort((a, b) => a.month.localeCompare(b.month))
 }
 
+/** Dépense mensuelle ventilée par véhicule : { month, totals: { [vehicleId]: € } } */
+export interface MonthCostByVehicle {
+  month: string
+  totals: Record<string, number>
+  total: number
+}
+
+export function monthlyCostsByVehicle(fillups: Fillup[]): MonthCostByVehicle[] {
+  const map = new Map<string, Record<string, number>>()
+  for (const f of fillups) {
+    if (f.total_price == null) continue
+    const month = f.filled_at.slice(0, 7)
+    const totals = map.get(month) ?? {}
+    totals[f.vehicle_id] = (totals[f.vehicle_id] ?? 0) + f.total_price
+    map.set(month, totals)
+  }
+  return [...map.entries()]
+    .map(([month, totals]) => ({
+      month,
+      totals,
+      total: Object.values(totals).reduce((s, v) => s + v, 0),
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month))
+}
+
 export interface PricePoint {
   date: string
   price: number
