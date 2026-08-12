@@ -94,22 +94,24 @@ export default function App() {
         </div>
         {/* Le filtre est un concept de consultation : pas sur l'écran de saisie */}
         {tab !== 'new' && vehicles.length > 0 && (
-          <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
-            <button
-              className={vehicleFilter === 'all' ? 'chip active' : 'chip'}
-              onClick={() => setVehicleFilter('all')}
-            >
-              Tous
-            </button>
-            {vehicles.map((v) => (
+          <div className="chips-wrap">
+            <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
               <button
-                key={v.id}
-                className={vehicleFilter === v.id ? 'chip active' : 'chip'}
-                onClick={() => setVehicleFilter(v.id)}
+                className={vehicleFilter === 'all' ? 'chip active' : 'chip'}
+                onClick={() => setVehicleFilter('all')}
               >
-                {v.name}
+                Tous
               </button>
-            ))}
+              {vehicles.map((v) => (
+                <button
+                  key={v.id}
+                  className={vehicleFilter === v.id ? 'chip active' : 'chip'}
+                  onClick={() => setVehicleFilter(v.id)}
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </header>
@@ -145,6 +147,7 @@ export default function App() {
                 <FillupForm
                   key={vehicleFilter} /* re-préremplit le véhicule quand le filtre change */
                   vehicles={vehicles}
+                  fillups={fillups}
                   defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
                   userEmail={userEmail}
                   showToast={showToast}

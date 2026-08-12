@@ -34,7 +34,9 @@ function Thumb({ path }: { path: string }) {
 }
 
 // ------------------------------------------------------------
-// Éditeur d'un plein (complétion de brouillon comprise)
+// Feuille d'édition d'un plein (complétion de brouillon comprise)
+// La tâche du brouillon = recopier les chiffres de la photo :
+// photo en haut, litres/prix juste dessous, focus immédiat.
 // ------------------------------------------------------------
 
 function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => void; showToast: Props['showToast'] }) {
@@ -97,26 +99,39 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
   }
 
   return (
-    <form className="card" onSubmit={submit} style={{ borderColor: 'var(--accent)' }}>
+    <form onSubmit={submit}>
       <h2>{fillup.is_draft ? 'Compléter le plein' : 'Modifier le plein'}</h2>
       {photoUrl && <img className="photo-full" src={photoUrl} alt="Écran de la pompe" />}
-      <label className="field">
-        <span className="lbl">Date et heure</span>
-        <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />
-      </label>
       <div className="field-grid">
         <label className="field">
           <span className="lbl">Litres</span>
-          <input type="text" inputMode="decimal" value={liters} onChange={(e) => setLiters(e.target.value)} />
+          <input
+            type="text"
+            inputMode="decimal"
+            autoFocus={fillup.is_draft}
+            placeholder="42,50"
+            value={liters}
+            onChange={(e) => setLiters(e.target.value)}
+          />
         </label>
         <label className="field">
           <span className="lbl">Prix total (€)</span>
-          <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="72,30"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
         </label>
       </div>
       <label className="field">
         <span className="lbl">Compteur (km)</span>
         <input type="text" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} />
+      </label>
+      <label className="field">
+        <span className="lbl">Date et heure</span>
+        <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />
       </label>
       <label className="check">
         <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
@@ -126,7 +141,12 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
         <span className="lbl">Notes</span>
         <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
-      <button type="button" className="btn-ghost" style={{ width: '100%', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => photoInput.current?.click()}>
+      <button
+        type="button"
+        className="btn-ghost"
+        style={{ width: '100%', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        onClick={() => photoInput.current?.click()}
+      >
         <AttachIcon />
         {newPhoto ? `Nouvelle photo : ${newPhoto.name}` : fillup.photo_path ? 'Remplacer la photo' : 'Joindre une photo'}
       </button>
@@ -134,14 +154,12 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
       <button className="btn btn-primary" disabled={busy}>
         {busy ? 'Enregistrement…' : 'Enregistrer'}
       </button>
-      <div className="row-actions">
-        <button type="button" className="btn-ghost" onClick={onDone} disabled={busy}>
-          Annuler
-        </button>
-        <button type="button" className="btn-ghost btn-danger" onClick={remove} disabled={busy}>
-          Supprimer
-        </button>
-      </div>
+      <button type="button" className="btn-ghost" style={{ width: '100%', marginTop: 8 }} onClick={onDone} disabled={busy}>
+        Annuler
+      </button>
+      <button type="button" className="btn-delete" onClick={remove} disabled={busy}>
+        Supprimer ce plein
+      </button>
     </form>
   )
 }
@@ -157,6 +175,16 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
   const [editingId, setEditingId] = useState<string | null>(null)
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '?'
   const drafts = fillups.filter((f) => f.is_draft)
+  const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
+
+  // La feuille ouverte fige le défilement de la page derrière
+  useEffect(() => {
+    if (!editing) return
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [editing])
 
   if (fillups.length === 0) {
     return (
@@ -183,61 +211,68 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
         return (
           <Fragment key={f.id}>
             {showLabel && <div className="month-label">{label}</div>}
-            {editingId === f.id && !f.pending ? (
-              <Editor
-                fillup={f}
-                showToast={showToast}
-                onDone={() => {
-                  setEditingId(null)
-                  onChanged()
-                }}
-              />
-            ) : (
-              <button
-                className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
-                onClick={() => {
-                  if (f.pending) {
-                    showToast('Ce plein sera modifiable après synchronisation', 'err')
-                    return
-                  }
-                  setEditingId(editingId === f.id ? null : f.id)
-                }}
-              >
-                {f.photo_path ? (
-                  <Thumb path={f.photo_path} />
-                ) : (
-                  <div className="thumb ph">
-                    <PumpIcon size={22} />
-                  </div>
-                )}
-                <div className="body">
-                  <div className="date">
-                    {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
-                    {f.is_draft && <span className="badge badge-draft">À compléter</span>}
-                    {f.pending && <span className="badge badge-pending">En attente</span>}
-                    {!f.is_full && !f.is_draft && <span className="badge badge-partial">Partiel</span>}
-                  </div>
-                  {f.is_draft ? (
-                    <div className="sub" style={{ marginTop: 4 }}>
-                      Photo enregistrée — touche ici pour encoder les chiffres
-                    </div>
-                  ) : (
-                    <>
-                      <div className="nums">
-                        {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
-                      </div>
-                      <div className="sub">
-                        {fmtPricePerL(f.price_per_liter)} · {fmtKm(f.odometer_km)}
-                        {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
-                      </div>
-                    </>
-                  )}
+            <button
+              className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
+              onClick={() => {
+                if (f.pending) {
+                  showToast('Ce plein sera modifiable après synchronisation', 'err')
+                  return
+                }
+                setEditingId(f.id)
+              }}
+            >
+              {f.photo_path ? (
+                <Thumb path={f.photo_path} />
+              ) : (
+                <div className="thumb ph">
+                  <PumpIcon size={22} />
                 </div>
-              </button>
-            )}
+              )}
+              <div className="body">
+                <div className="date">
+                  {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
+                  {f.is_draft && <span className="badge badge-draft">À compléter</span>}
+                  {f.pending && <span className="badge badge-pending">En attente</span>}
+                  {!f.is_full && !f.is_draft && <span className="badge badge-partial">Partiel</span>}
+                </div>
+                {f.is_draft ? (
+                  <div className="sub" style={{ marginTop: 4 }}>
+                    Photo enregistrée — touche ici pour encoder les chiffres
+                  </div>
+                ) : (
+                  <>
+                    <div className="nums">
+                      {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
+                    </div>
+                    <div className="sub">
+                      {fmtPricePerL(f.price_per_liter)} · {fmtKm(f.odometer_km)}
+                      {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
+                    </div>
+                  </>
+                )}
+              </div>
+            </button>
           </Fragment>
         )
       })}
+
+      {editing && (
+        <>
+          <div className="sheet-backdrop" onClick={() => setEditingId(null)} />
+          <div className="sheet" role="dialog" aria-modal="true" aria-label="Édition du plein">
+            <div className="sheet-handle" aria-hidden />
+            <Editor
+              key={editing.id}
+              fillup={editing}
+              showToast={showToast}
+              onDone={() => {
+                setEditingId(null)
+                onChanged()
+              }}
+            />
+          </div>
+        </>
+      )}
     </>
   )
 }
