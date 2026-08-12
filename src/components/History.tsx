@@ -10,6 +10,8 @@ import { AttachIcon, PumpIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
+  /** Liste complète, non filtrée : sert aux validations inter-véhicules */
+  allFillups: Fillup[]
   vehicles: Vehicle[]
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
@@ -40,7 +42,20 @@ function Thumb({ path }: { path: string }) {
 // photo en haut, litres/prix juste dessous, focus immédiat.
 // ------------------------------------------------------------
 
-function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => void; showToast: Props['showToast'] }) {
+function Editor({
+  fillup,
+  vehicles,
+  allFillups,
+  onDone,
+  showToast,
+}: {
+  fillup: Fillup
+  vehicles: Vehicle[]
+  allFillups: Fillup[]
+  onDone: () => void
+  showToast: Props['showToast']
+}) {
+  const [vehicleId, setVehicleId] = useState(fillup.vehicle_id)
   const [dateStr, setDateStr] = useState(toLocalInputValue(new Date(fillup.filled_at)))
   const [odo, setOdo] = useState(fillup.odometer_km?.toString() ?? '')
   const [liters, setLiters] = useState(fillup.liters?.toString() ?? '')
@@ -52,21 +67,46 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
   const photoInput = useRef<HTMLInputElement>(null)
   const photoUrl = usePhotoUrl(fillup.photo_path)
 
+  // Plein précédent du véhicule choisi, à la date saisie (le plein édité exclu)
+  const editedTime = new Date(dateStr).getTime()
+  const prevOdo = useMemo(() => {
+    let max: number | null = null
+    for (const f of allFillups) {
+      if (
+        f.id === fillup.id ||
+        f.vehicle_id !== vehicleId ||
+        f.is_draft ||
+        f.odometer_km == null ||
+        new Date(f.filled_at).getTime() >= editedTime
+      )
+        continue
+      if (max == null || f.odometer_km > max) max = f.odometer_km
+    }
+    return max
+  }, [allFillups, fillup.id, vehicleId, editedTime])
+
+  const odoNum = parseDecimal(odo)
+  const odoError =
+    odoNum != null && prevOdo != null && Math.round(odoNum) <= prevOdo
+      ? `Doit dépasser ${fmtKm(prevOdo)} (plein précédent)`
+      : null
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     const litersNum = parseDecimal(liters)
     const priceNum = parseDecimal(price)
-    const odoNum = parseDecimal(odo)
     if (!litersNum || litersNum <= 0 || priceNum == null || priceNum < 0) {
       showToast('Litres et prix total sont requis pour compléter le plein', 'err')
       return
     }
+    if (odoError) return
     setBusy(true)
     try {
       const blob = newPhoto ? await downscalePhoto(newPhoto) : null
       await updateFillup(
         fillup.id,
         {
+          vehicle_id: vehicleId,
           filled_at: new Date(dateStr).toISOString(),
           odometer_km: odoNum != null ? Math.round(odoNum) : null,
           liters: litersNum,
@@ -128,8 +168,36 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
       </div>
       <label className="field">
         <span className="lbl">Compteur (km)</span>
-        <input type="text" inputMode="numeric" value={odo} onChange={(e) => setOdo(e.target.value)} />
+        <input
+          type="text"
+          inputMode="numeric"
+          className={odoError ? 'error' : ''}
+          value={odo}
+          onChange={(e) => setOdo(e.target.value)}
+        />
+        {odoError ? (
+          <span className="field-error">{odoError}</span>
+        ) : prevOdo != null ? (
+          <span className="field-hint">Plein précédent : {fmtKm(prevOdo)}</span>
+        ) : null}
       </label>
+      {vehicles.length > 1 && (
+        <div className="field">
+          <span className="lbl">Véhicule</span>
+          <div className="chips wrap">
+            {vehicles.map((v) => (
+              <button
+                type="button"
+                key={v.id}
+                className={vehicleId === v.id ? 'chip active' : 'chip'}
+                onClick={() => setVehicleId(v.id)}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <label className="field">
         <span className="lbl">Date et heure</span>
         <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />
@@ -172,7 +240,7 @@ function Editor({ fillup, onDone, showToast }: { fillup: Fillup; onDone: () => v
 const monthOf = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
-export default function History({ fillups, vehicles, onChanged, showToast }: Props) {
+export default function History({ fillups, allFillups, vehicles, onChanged, showToast }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '?'
   const drafts = fillups.filter((f) => f.is_draft)
@@ -305,6 +373,8 @@ export default function History({ fillups, vehicles, onChanged, showToast }: Pro
             <Editor
               key={editing.id}
               fillup={editing}
+              vehicles={vehicles}
+              allFillups={allFillups}
               showToast={showToast}
               onDone={() => {
                 setEditingId(null)

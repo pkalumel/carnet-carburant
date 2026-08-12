@@ -183,6 +183,7 @@ export default function App() {
         {tab === 'history' && (
           <History
             fillups={filtered}
+            allFillups={fillups}
             vehicles={vehicles}
             onChanged={() => void refresh()}
             showToast={showToast}
