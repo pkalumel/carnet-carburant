@@ -1,17 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { addVehicle, deleteVehicle } from '../lib/db'
-import type { Vehicle } from '../lib/types'
+import type { Fillup, Vehicle } from '../lib/types'
 
 interface Props {
   vehicles: Vehicle[]
+  fillups: Fillup[]
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
-export default function VehicleManager({ vehicles, onChanged, showToast }: Props) {
+export default function VehicleManager({ vehicles, fillups, onChanged, showToast }: Props) {
   const [name, setName] = useState('')
   const [plate, setPlate] = useState('')
   const [busy, setBusy] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [confirmText, setConfirmText] = useState('')
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -31,30 +34,94 @@ export default function VehicleManager({ vehicles, onChanged, showToast }: Props
   }
 
   async function remove(v: Vehicle) {
-    if (!confirm(`Supprimer « ${v.name} » et tous ses pleins ? Cette action est définitive.`)) return
+    setBusy(true)
     try {
       await deleteVehicle(v.id)
+      setConfirmingId(null)
+      setConfirmText('')
       showToast('Véhicule supprimé', 'ok')
       onChanged()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur', 'err')
+    } finally {
+      setBusy(false)
     }
   }
+
+  const countFor = (id: string) => fillups.filter((f) => f.vehicle_id === id).length
 
   return (
     <section className="card">
       <h2>Véhicules</h2>
-      {vehicles.map((v) => (
-        <div key={v.id} className="fillup-item">
-          <div className="body">
-            <div className="nums">{v.name}</div>
-            {v.plate && <div className="sub">{v.plate}</div>}
+      {vehicles.map((v) => {
+        const n = countFor(v.id)
+        const confirming = confirmingId === v.id
+        const nameMatches = confirmText.trim().toLowerCase() === v.name.trim().toLowerCase()
+        return (
+          <div key={v.id}>
+            <div className="fillup-item">
+              <div className="body">
+                <div className="nums">{v.name}</div>
+                <div className="sub">
+                  {v.plate ? `${v.plate} · ` : ''}
+                  {n === 0 ? 'aucun plein' : n === 1 ? '1 plein' : `${n} pleins`}
+                </div>
+              </div>
+              {!confirming && (
+                <button
+                  className="btn-ghost btn-danger"
+                  onClick={() => {
+                    setConfirmingId(v.id)
+                    setConfirmText('')
+                  }}
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+            {confirming && (
+              <div className="danger-zone">
+                <p>
+                  {n === 0
+                    ? <>Supprimer « {v.name} » ? Cette action est définitive.</>
+                    : <>Supprimer « {v.name} » et ses {n === 1 ? '1 plein' : `${n} pleins`} ?
+                      Tout l’historique de ce véhicule sera perdu. Cette action est définitive.</>}
+                </p>
+                {n > 0 && (
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder={`Tape « ${v.name} » pour confirmer`}
+                    autoComplete="off"
+                  />
+                )}
+                <div className="row-actions">
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={busy}
+                    onClick={() => {
+                      setConfirmingId(null)
+                      setConfirmText('')
+                    }}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-danger"
+                    disabled={busy || (n > 0 && !nameMatches)}
+                    onClick={() => void remove(v)}
+                  >
+                    Supprimer définitivement
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          <button className="btn-ghost btn-danger" onClick={() => remove(v)}>
-            Supprimer
-          </button>
-        </div>
-      ))}
+        )
+      })}
       <form onSubmit={submit} style={{ marginTop: 12 }}>
         <div className="field-grid">
           <label className="field">

@@ -13,8 +13,18 @@ interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
+const LAST_VEHICLE_KEY = 'carnet:lastEntryVehicle'
+
 export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSaved, showToast }: Props) {
-  const [vehicleId, setVehicleId] = useState(defaultVehicleId ?? vehicles[0]?.id ?? '')
+  const [vehicleId, setVehicleId] = useState(() => {
+    const last = localStorage.getItem(LAST_VEHICLE_KEY)
+    return (
+      defaultVehicleId ??
+      (last && vehicles.some((v) => v.id === last) ? last : null) ??
+      vehicles[0]?.id ??
+      ''
+    )
+  })
   const [dateStr, setDateStr] = useState(() => toLocalInputValue(new Date()))
   const [odo, setOdo] = useState('')
   const [liters, setLiters] = useState('')
@@ -69,6 +79,7 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
         },
         blob,
       )
+      localStorage.setItem(LAST_VEHICLE_KEY, vehicleId)
       resetForm()
       onSaved(status, true)
     } catch {
@@ -106,6 +117,7 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
         },
         blob,
       )
+      localStorage.setItem(LAST_VEHICLE_KEY, vehicleId)
       resetForm()
       onSaved(status, false)
     } catch {
@@ -160,19 +172,23 @@ export default function FillupForm({ vehicles, defaultVehicleId, userEmail, onSa
 
       <form className="card" onSubmit={submit}>
         <h2>Nouveau plein</h2>
-        <label className="field">
-          <span className="lbl">Véhicule</span>
-          <select className="input" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} required>
-            <option value="" disabled>
-              Choisir…
-            </option>
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {vehicles.length > 1 && (
+          <div className="field">
+            <span className="lbl">Véhicule</span>
+            <div className="chips wrap">
+              {vehicles.map((v) => (
+                <button
+                  type="button"
+                  key={v.id}
+                  className={vehicleId === v.id ? 'chip active' : 'chip'}
+                  onClick={() => setVehicleId(v.id)}
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="field">
           <span className="lbl">Date et heure</span>
           <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />

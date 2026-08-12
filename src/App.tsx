@@ -92,7 +92,8 @@ export default function App() {
             Sortir
           </button>
         </div>
-        {vehicles.length > 0 && (
+        {/* Le filtre est un concept de consultation : pas sur l'écran de saisie */}
+        {tab !== 'new' && vehicles.length > 0 && (
           <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
             <button
               className={vehicleFilter === 'all' ? 'chip active' : 'chip'}
@@ -137,7 +138,7 @@ export default function App() {
                   <div className="empty-title">Bienvenue !</div>
                   Commence par ajouter le premier véhicule de la famille juste en dessous.
                 </div>
-                <VehicleManager vehicles={vehicles} onChanged={() => void refresh()} showToast={showToast} />
+                <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={() => void refresh()} showToast={showToast} />
               </>
             ) : (
               <>
@@ -163,7 +164,7 @@ export default function App() {
                   {showGarage ? 'Masquer les véhicules' : 'Gérer les véhicules'}
                 </button>
                 {showGarage && (
-                  <VehicleManager vehicles={vehicles} onChanged={() => void refresh()} showToast={showToast} />
+                  <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={() => void refresh()} showToast={showToast} />
                 )}
               </>
             )}

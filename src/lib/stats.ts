@@ -81,7 +81,15 @@ export function summarize(fillups: Fillup[]): Summary {
   const real = fillups.filter((f) => !f.is_draft)
   const totalSpent = real.reduce((s, f) => s + (f.total_price ?? 0), 0)
   const totalLiters = real.reduce((s, f) => s + (f.liters ?? 0), 0)
-  const conso = consumptionSeries(fillups)
+  // Les consommations se calculent véhicule par véhicule : enchaîner les
+  // odomètres de véhicules différents fabriquerait des distances fictives.
+  const byVehicle = new Map<string, Fillup[]>()
+  for (const f of fillups) {
+    const group = byVehicle.get(f.vehicle_id)
+    if (group) group.push(f)
+    else byVehicle.set(f.vehicle_id, [f])
+  }
+  const conso = [...byVehicle.values()].flatMap(consumptionSeries)
   const trackedKm = conso.reduce((s, p) => s + p.km, 0)
   const trackedLiters = conso.reduce((s, p) => s + p.liters, 0)
   const avgConso = trackedKm > 0 ? (trackedLiters / trackedKm) * 100 : null
