@@ -40,6 +40,14 @@ export async function addVehicle(
   return data as Vehicle
 }
 
+export async function updateVehicle(
+  id: string,
+  patch: { name: string; plate: string | null; fuel: string | null },
+): Promise<void> {
+  const { error } = await supabase.from('vehicles').update(patch).eq('id', id)
+  if (error) throw new Error(`Modification impossible : ${error.message}`)
+}
+
 export async function deleteVehicle(id: string): Promise<void> {
   const { error } = await supabase.from('vehicles').delete().eq('id', id)
   if (error) throw new Error(`Suppression impossible : ${error.message}`)

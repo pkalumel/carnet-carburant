@@ -305,6 +305,22 @@ input:focus-visible, textarea:focus-visible, select.input:focus-visible {
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
 }
+/* Dans une grille, un libellé qui déborde ne doit pas décaler son champ */
+.field-grid .lbl {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Panneau d'édition d'un véhicule dans le garage */
+.vehicle-editor {
+  padding: 16px;
+  margin: 8px 0 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #faf9f6;
+}
+.vehicle-editor input[type="text"] { background: #fff; }
 
 /* Erreurs et aides inline sous les champs */
 input.error { border-color: var(--danger); }
