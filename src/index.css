@@ -255,6 +255,17 @@ input[inputmode="decimal"], input[inputmode="numeric"], input[type="number"] {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
+/* iOS Safari centre la valeur des champs date/heure et leur donne une
+   hauteur propre : on réaligne à gauche et on égalise avec les autres champs */
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 51px;
+  text-align: left;
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+}
 input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
   outline: 3px solid rgba(240, 180, 41, 0.55);
   outline-offset: 1px;
