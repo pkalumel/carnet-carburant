@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function AuthScreen() {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -15,8 +16,16 @@ export default function AuthScreen() {
     setInfo(null)
     setBusy(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        if (!data.session) {
+          setInfo('Compte créé ! Ouvre le lien de confirmation reçu par email, puis connecte-toi.')
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connexion impossible.')
     } finally {
@@ -71,7 +80,7 @@ export default function AuthScreen() {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               minLength={6}
               required
             />
@@ -97,14 +106,27 @@ export default function AuthScreen() {
           </div>
         </label>
         <button className="btn btn-primary" disabled={busy}>
-          Se connecter
+          {mode === 'signin' ? 'Se connecter' : 'Créer le compte'}
         </button>
         {error && <p className="form-error">{error}</p>}
         {info && <p className="form-error" style={{ color: 'var(--ok)' }}>{info}</p>}
       </form>
-      <button className="auth-switch" onClick={() => void forgotPassword()} disabled={busy}>
-        Mot de passe oublié ?
+      <button
+        className="auth-switch"
+        onClick={() => {
+          setMode(mode === 'signin' ? 'signup' : 'signin')
+          setError(null)
+          setInfo(null)
+        }}
+        disabled={busy}
+      >
+        {mode === 'signin' ? 'Première fois ? Créer un compte' : 'Déjà un compte ? Se connecter'}
       </button>
+      {mode === 'signin' && (
+        <button className="auth-switch" onClick={() => void forgotPassword()} disabled={busy}>
+          Mot de passe oublié ?
+        </button>
+      )}
     </div>
   )
 }
