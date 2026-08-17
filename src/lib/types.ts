@@ -6,13 +6,29 @@ export interface Vehicle {
   created_at: string
 }
 
+/** Nature d'un enregistrement : plein de carburant ou recharge électrique */
+export type Energy = 'fuel' | 'electric'
+
+export const FUEL_PLUGIN_HYBRID = 'Hybride rechargeable'
+export const FUEL_ELECTRIC = 'Électrique'
+
+/** Énergies enregistrables pour un véhicule selon son carburant */
+export function energiesFor(fuel: string | null): Energy[] {
+  if (fuel === FUEL_ELECTRIC) return ['electric']
+  if (fuel === FUEL_PLUGIN_HYBRID) return ['fuel', 'electric']
+  return ['fuel']
+}
+
 export interface Fillup {
   id: string
   vehicle_id: string
   filled_at: string
+  energy: Energy
   odometer_km: number | null
+  /** litres de carburant, ou kWh si energy = 'electric' */
   liters: number | null
   total_price: number | null
+  /** €/L, ou €/kWh si energy = 'electric' */
   price_per_liter: number | null
   is_full: boolean
   is_draft: boolean
@@ -27,6 +43,7 @@ export interface Fillup {
 export interface FillupInput {
   vehicle_id: string
   filled_at: string
+  energy: Energy
   odometer_km: number | null
   liters: number | null
   total_price: number | null

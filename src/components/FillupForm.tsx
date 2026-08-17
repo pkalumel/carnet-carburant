@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
-import { fmtKm, fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
-import type { Fillup, Vehicle } from '../lib/types'
-import { AttachIcon, CameraIcon, SaveIcon } from './icons'
+import { fmtKm, fmtPricePerKwh, fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
+import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
+import { AttachIcon, BoltIcon, CameraIcon, PumpIcon, SaveIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -26,6 +26,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
       ''
     )
   })
+  const [energyChoice, setEnergyChoice] = useState<Energy | null>(null)
   const [dateStr, setDateStr] = useState(() => toLocalInputValue(new Date()))
   const [odo, setOdo] = useState('')
   const [liters, setLiters] = useState('')
@@ -42,10 +43,17 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
   const litersInput = useRef<HTMLInputElement>(null)
   const priceInput = useRef<HTMLInputElement>(null)
 
+  // Énergies possibles pour le véhicule choisi ; le choix explicite ne
+  // survit que s'il reste valable après un changement de véhicule.
+  const vehicle = vehicles.find((v) => v.id === vehicleId)
+  const energies = energiesFor(vehicle?.fuel ?? null)
+  const energy: Energy = energyChoice && energies.includes(energyChoice) ? energyChoice : energies[0]
+  const electric = energy === 'electric'
+
   const litersNum = parseDecimal(liters)
   const priceNum = parseDecimal(price)
   const odoNum = parseDecimal(odo)
-  const pricePerLiter = useMemo(
+  const pricePerUnit = useMemo(
     () => (litersNum && priceNum != null && litersNum > 0 ? priceNum / litersNum : null),
     [litersNum, priceNum],
   )
@@ -79,7 +87,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
     if (quickInput.current) quickInput.current.value = ''
   }
 
-  /** Capture rapide : photo de la pompe → brouillon à compléter plus tard */
+  /** Capture rapide : photo de la pompe ou de la borne → brouillon à compléter plus tard */
   async function quickCapture(file: File) {
     if (!vehicleId) {
       showToast('Choisis d’abord un véhicule', 'err')
@@ -92,6 +100,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
         {
           vehicle_id: vehicleId,
           filled_at: new Date().toISOString(),
+          energy,
           odometer_km: null,
           liters: null,
           total_price: null,
@@ -115,7 +124,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
   async function submit(e: FormEvent) {
     e.preventDefault()
     const errs: { liters?: string; price?: string } = {}
-    if (!litersNum || litersNum <= 0) errs.liters = 'Indique les litres'
+    if (!litersNum || litersNum <= 0) errs.liters = electric ? 'Indique les kWh' : 'Indique les litres'
     if (priceNum == null || priceNum < 0) errs.price = 'Indique le prix total'
     setErrors(errs)
     if (errs.liters) {
@@ -134,6 +143,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
         {
           vehicle_id: vehicleId,
           filled_at: new Date(dateStr).toISOString(),
+          energy,
           odometer_km: odoNum != null ? Math.round(odoNum) : null,
           liters: litersNum as number,
           total_price: priceNum as number,
@@ -156,7 +166,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
 
   return (
     <>
-      {/* Capture rapide : le geste d'urgence à la pompe */}
+      {/* Capture rapide : le geste d'urgence à la pompe ou à la borne */}
       <button
         type="button"
         className="btn-capture"
@@ -168,7 +178,11 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
         </span>
         <span className="txt">
           Capture rapide
-          <small>Photographie l’écran de la pompe, encode plus tard</small>
+          <small>
+            {electric
+              ? 'Photographie l’écran de la borne, encode plus tard'
+              : 'Photographie l’écran de la pompe, encode plus tard'}
+          </small>
         </span>
         <svg
           className="chev"
@@ -198,7 +212,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
       />
 
       <form className="card" onSubmit={submit} noValidate>
-        <h2>Nouveau plein</h2>
+        <h2>{electric ? 'Nouvelle recharge' : 'Nouveau plein'}</h2>
         {vehicles.length > 1 && (
           <div className="field">
             <span className="lbl">Véhicule</span>
@@ -216,14 +230,35 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
             </div>
           </div>
         )}
+        {energies.length > 1 && (
+          <div className="field">
+            <span className="lbl">Énergie</span>
+            <div className="chips">
+              <button
+                type="button"
+                className={energy === 'fuel' ? 'chip active' : 'chip'}
+                onClick={() => setEnergyChoice('fuel')}
+              >
+                <PumpIcon size={16} /> Carburant
+              </button>
+              <button
+                type="button"
+                className={energy === 'electric' ? 'chip active' : 'chip'}
+                onClick={() => setEnergyChoice('electric')}
+              >
+                <BoltIcon size={16} /> Recharge
+              </button>
+            </div>
+          </div>
+        )}
         <div className="field-grid">
           <label className="field">
-            <span className="lbl">Litres</span>
+            <span className="lbl">{electric ? 'kWh' : 'Litres'}</span>
             <input
               ref={litersInput}
               type="text"
               inputMode="decimal"
-              placeholder="42,50"
+              placeholder={electric ? '38,20' : '42,50'}
               className={errors.liters ? 'error' : ''}
               value={liters}
               onChange={(e) => {
@@ -239,7 +274,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
               ref={priceInput}
               type="text"
               inputMode="decimal"
-              placeholder="72,30"
+              placeholder={electric ? '18,40' : '72,30'}
               className={errors.price ? 'error' : ''}
               value={price}
               onChange={(e) => {
@@ -272,10 +307,10 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
             ) : null}
           </label>
           <div className="field">
-            <span className="lbl">Prix au litre</span>
+            <span className="lbl">{electric ? 'Prix au kWh' : 'Prix au litre'}</span>
             <div className="ppl">
               <span className="meter-big" style={{ fontSize: 22 }}>
-                {fmtPricePerL(pricePerLiter)}
+                {electric ? fmtPricePerKwh(pricePerUnit) : fmtPricePerL(pricePerUnit)}
               </span>
             </div>
           </div>
@@ -311,7 +346,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
             </label>
             <label className="check">
               <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
-              Plein complet (rempli à ras bord)
+              {electric ? 'Charge complète (batterie à 100 %)' : 'Plein complet (rempli à ras bord)'}
             </label>
             <label className="field">
               <span className="lbl">Notes (optionnel)</span>
@@ -319,7 +354,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Station, type de carburant…"
+                placeholder={electric ? 'Borne, réseau de recharge…' : 'Station, type de carburant…'}
               />
             </label>
             <div className="field">
@@ -330,7 +365,11 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 <AttachIcon />
-                {photo ? `Photo jointe : ${photo.name}` : 'Joindre la photo de la pompe'}
+                {photo
+                  ? `Photo jointe : ${photo.name}`
+                  : electric
+                    ? 'Joindre la photo de la borne'
+                    : 'Joindre la photo de la pompe'}
               </button>
               <input
                 ref={attachInput}
@@ -345,7 +384,8 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
         )}
 
         <button className="btn btn-primary" disabled={busy}>
-          <SaveIcon /> {busy ? 'Enregistrement…' : 'Enregistrer le plein'}
+          <SaveIcon />{' '}
+          {busy ? 'Enregistrement…' : electric ? 'Enregistrer la recharge' : 'Enregistrer le plein'}
         </button>
       </form>
     </>

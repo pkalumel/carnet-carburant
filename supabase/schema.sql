@@ -10,15 +10,18 @@ create table public.vehicles (
   user_id    uuid not null references auth.users(id) default auth.uid(),
   name       text not null,
   plate      text,
-  fuel       text,                                 -- Essence, Diesel, E85, GPL…
+  fuel       text,                                 -- Essence, Diesel, E85, GPL, Hybride rechargeable, Électrique…
   created_at timestamptz not null default now()
 );
 
--- Pleins de carburant
+-- Pleins de carburant et recharges électriques.
+-- energy = 'electric' : liters contient les kWh et price_per_liter
+-- devient de fait un prix au kWh.
 create table public.fillups (
   id               uuid primary key default gen_random_uuid(),
   vehicle_id       uuid not null references public.vehicles(id) on delete cascade,
   filled_at        timestamptz not null default now(),
+  energy           text not null default 'fuel' check (energy in ('fuel', 'electric')),
   odometer_km      integer check (odometer_km > 0),
   liters           numeric(7,2) check (liters > 0),
   total_price      numeric(8,2) check (total_price >= 0),

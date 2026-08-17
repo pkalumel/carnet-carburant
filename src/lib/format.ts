@@ -5,9 +5,12 @@ const nf0 = new Intl.NumberFormat('fr-FR')
 
 export const fmtEur = (v: number | null | undefined) => (v == null ? '—' : `${nf2.format(v)} €`)
 export const fmtLiters = (v: number | null | undefined) => (v == null ? '—' : `${nf2.format(v)} L`)
+export const fmtKwh = (v: number | null | undefined) => (v == null ? '—' : `${nf2.format(v)} kWh`)
 export const fmtPricePerL = (v: number | null | undefined) => (v == null ? '—' : `${nf3.format(v)} €/L`)
+export const fmtPricePerKwh = (v: number | null | undefined) => (v == null ? '—' : `${nf3.format(v)} €/kWh`)
 export const fmtKm = (v: number | null | undefined) => (v == null ? '—' : `${nf0.format(v)} km`)
 export const fmtConso = (v: number | null | undefined) => (v == null ? '—' : `${nf1.format(v)} L/100`)
+export const fmtConsoElec = (v: number | null | undefined) => (v == null ? '—' : `${nf1.format(v)} kWh/100`)
 
 export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })

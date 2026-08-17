@@ -10,7 +10,7 @@ interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
-const FUELS = ['Essence', 'Diesel', 'E85', 'GPL', 'Hybride']
+const FUELS = ['Essence', 'Diesel', 'E85', 'GPL', 'Hybride', 'Hybride rechargeable', 'Électrique']
 
 function FuelChips({ value, onChange }: { value: string | null; onChange: (f: string | null) => void }) {
   return (

@@ -88,9 +88,19 @@ export async function loadFillups(): Promise<Fillup[]> {
     rows = ((await idbGet(CACHE_FILLUPS)) as Fillup[] | undefined) ?? []
   }
   const pending = (await listOutbox()).map(pendingToFillup)
-  return [...pending, ...rows].sort(
-    (a, b) => new Date(b.filled_at).getTime() - new Date(a.filled_at).getTime(),
-  )
+  return [...pending, ...rows]
+    .map((f) => (f.energy ? f : { ...f, energy: 'fuel' as const })) // lignes d'avant la migration
+    .sort((a, b) => new Date(b.filled_at).getTime() - new Date(a.filled_at).getTime())
+}
+
+/** Insertion avec repli si la colonne energy n'existe pas encore côté serveur */
+async function insertFillup(row: Record<string, unknown>): Promise<void> {
+  let { error } = await supabase.from('fillups').insert(row)
+  if (error && error.message.includes('energy')) {
+    const { energy: _energy, ...rest } = row
+    ;({ error } = await supabase.from('fillups').insert(rest))
+  }
+  if (error) throw error
 }
 
 async function uploadPhoto(id: string, photo: Blob): Promise<string> {
@@ -114,8 +124,7 @@ export async function saveFillup(
   if (navigator.onLine) {
     try {
       const photo_path = photo ? await uploadPhoto(id, photo) : null
-      const { error } = await supabase.from('fillups').insert({ id, ...input, photo_path })
-      if (error) throw error
+      await insertFillup({ id, ...input, photo_path })
       return 'synced'
     } catch {
       // on retombe sur la file d'attente locale
@@ -132,10 +141,12 @@ export async function flushOutbox(): Promise<number> {
   for (const item of items) {
     try {
       const photo_path = item.photo ? await uploadPhoto(item.localId, item.photo) : null
-      const { error } = await supabase
-        .from('fillups')
-        .insert({ id: item.localId, ...item.input, photo_path })
-      if (error && error.code !== '23505') throw error // 23505 : déjà inséré lors d'un essai précédent
+      try {
+        await insertFillup({ id: item.localId, ...item.input, photo_path })
+      } catch (err) {
+        // 23505 : déjà inséré lors d'un essai précédent
+        if ((err as { code?: string }).code !== '23505') throw err
+      }
       await removeFromOutbox(item.localId)
       synced++
     } catch {

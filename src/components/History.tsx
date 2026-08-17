@@ -2,11 +2,12 @@ import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from '
 import { deleteFillup, getPhotoUrl, updateFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import {
-  fmtConso, fmtDateTime, fmtEur, fmtKm, fmtLiters, fmtPricePerL, parseDecimal, toLocalInputValue,
+  fmtConso, fmtConsoElec, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters, fmtPricePerKwh,
+  fmtPricePerL, parseDecimal, toLocalInputValue,
 } from '../lib/format'
 import { consumptionSeries, type ConsoPoint } from '../lib/stats'
-import type { Fillup, Vehicle } from '../lib/types'
-import { AttachIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
+import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
+import { AttachIcon, BoltIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
@@ -37,9 +38,9 @@ function Thumb({ path }: { path: string }) {
 }
 
 // ------------------------------------------------------------
-// Feuille d'édition d'un plein (complétion de brouillon comprise)
+// Feuille d'édition d'un plein ou d'une recharge (brouillons compris)
 // La tâche du brouillon = recopier les chiffres de la photo :
-// photo en haut, litres/prix juste dessous, focus immédiat.
+// photo en haut, litres/kWh et prix juste dessous, focus immédiat.
 // ------------------------------------------------------------
 
 function Editor({
@@ -56,6 +57,7 @@ function Editor({
   showToast: Props['showToast']
 }) {
   const [vehicleId, setVehicleId] = useState(fillup.vehicle_id)
+  const [energyChoice, setEnergyChoice] = useState<Energy>(fillup.energy)
   const [dateStr, setDateStr] = useState(toLocalInputValue(new Date(fillup.filled_at)))
   const [odo, setOdo] = useState(fillup.odometer_km?.toString() ?? '')
   const [liters, setLiters] = useState(fillup.liters?.toString() ?? '')
@@ -66,6 +68,12 @@ function Editor({
   const [busy, setBusy] = useState(false)
   const photoInput = useRef<HTMLInputElement>(null)
   const photoUrl = usePhotoUrl(fillup.photo_path)
+
+  // Le choix d'énergie ne survit que s'il reste valable pour le véhicule choisi
+  const vehicle = vehicles.find((v) => v.id === vehicleId)
+  const energies = energiesFor(vehicle?.fuel ?? null)
+  const energy: Energy = energies.includes(energyChoice) ? energyChoice : energies[0]
+  const electric = energy === 'electric'
 
   // Plein précédent du véhicule choisi, à la date saisie (le plein édité exclu)
   const editedTime = new Date(dateStr).getTime()
@@ -96,7 +104,12 @@ function Editor({
     const litersNum = parseDecimal(liters)
     const priceNum = parseDecimal(price)
     if (!litersNum || litersNum <= 0 || priceNum == null || priceNum < 0) {
-      showToast('Litres et prix total sont requis pour compléter le plein', 'err')
+      showToast(
+        electric
+          ? 'kWh et prix total sont requis pour compléter la recharge'
+          : 'Litres et prix total sont requis pour compléter le plein',
+        'err',
+      )
       return
     }
     if (odoError) return
@@ -108,6 +121,7 @@ function Editor({
         {
           vehicle_id: vehicleId,
           filled_at: new Date(dateStr).toISOString(),
+          energy,
           odometer_km: odoNum != null ? Math.round(odoNum) : null,
           liters: litersNum,
           total_price: priceNum,
@@ -127,11 +141,11 @@ function Editor({
   }
 
   async function remove() {
-    if (!confirm('Supprimer ce plein ?')) return
+    if (!confirm(electric ? 'Supprimer cette recharge ?' : 'Supprimer ce plein ?')) return
     setBusy(true)
     try {
       await deleteFillup(fillup)
-      showToast('Plein supprimé', 'ok')
+      showToast(electric ? 'Recharge supprimée' : 'Plein supprimé', 'ok')
       onDone()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Suppression impossible', 'err')
@@ -141,16 +155,41 @@ function Editor({
 
   return (
     <form onSubmit={submit}>
-      <h2>{fillup.is_draft ? 'Compléter le plein' : 'Modifier le plein'}</h2>
-      {photoUrl && <img className="photo-full" src={photoUrl} alt="Écran de la pompe" />}
+      <h2>
+        {fillup.is_draft
+          ? electric ? 'Compléter la recharge' : 'Compléter le plein'
+          : electric ? 'Modifier la recharge' : 'Modifier le plein'}
+      </h2>
+      {photoUrl && <img className="photo-full" src={photoUrl} alt={electric ? 'Écran de la borne' : 'Écran de la pompe'} />}
+      {energies.length > 1 && (
+        <div className="field">
+          <span className="lbl">Énergie</span>
+          <div className="chips">
+            <button
+              type="button"
+              className={energy === 'fuel' ? 'chip active' : 'chip'}
+              onClick={() => setEnergyChoice('fuel')}
+            >
+              <PumpIcon size={16} /> Carburant
+            </button>
+            <button
+              type="button"
+              className={energy === 'electric' ? 'chip active' : 'chip'}
+              onClick={() => setEnergyChoice('electric')}
+            >
+              <BoltIcon size={16} /> Recharge
+            </button>
+          </div>
+        </div>
+      )}
       <div className="field-grid">
         <label className="field">
-          <span className="lbl">Litres</span>
+          <span className="lbl">{electric ? 'kWh' : 'Litres'}</span>
           <input
             type="text"
             inputMode="decimal"
             autoFocus={fillup.is_draft}
-            placeholder="42,50"
+            placeholder={electric ? '38,20' : '42,50'}
             value={liters}
             onChange={(e) => setLiters(e.target.value)}
           />
@@ -160,7 +199,7 @@ function Editor({
           <input
             type="text"
             inputMode="decimal"
-            placeholder="72,30"
+            placeholder={electric ? '18,40' : '72,30'}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
@@ -204,7 +243,7 @@ function Editor({
       </label>
       <label className="check">
         <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
-        Plein complet (rempli à ras bord)
+        {electric ? 'Charge complète (batterie à 100 %)' : 'Plein complet (rempli à ras bord)'}
       </label>
       <label className="field">
         <span className="lbl">Notes</span>
@@ -227,7 +266,7 @@ function Editor({
         <XIcon /> Annuler
       </button>
       <button type="button" className="btn-delete" onClick={remove} disabled={busy}>
-        <TrashIcon /> Supprimer ce plein
+        <TrashIcon /> {electric ? 'Supprimer cette recharge' : 'Supprimer ce plein'}
       </button>
     </form>
   )
@@ -246,7 +285,7 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
   const drafts = fillups.filter((f) => f.is_draft)
   const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
 
-  // Distance et conso de chaque plein (période close par ce plein), par véhicule
+  // Distance et conso de chaque plein (période close par ce plein), par véhicule et par énergie
   const consoByFillup = useMemo(() => {
     const map = new Map<string, ConsoPoint>()
     const byVehicle = new Map<string, typeof fillups>()
@@ -256,7 +295,9 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
       else byVehicle.set(f.vehicle_id, [f])
     }
     for (const [vid, group] of byVehicle) {
-      for (const p of consumptionSeries(group)) map.set(`${vid}|${p.date}`, p)
+      for (const energy of ['fuel', 'electric'] as const) {
+        for (const p of consumptionSeries(group, energy)) map.set(`${vid}|${energy}|${p.date}`, p)
+      }
     }
     return map
   }, [fillups])
@@ -306,7 +347,8 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
       {fillups.map((f, i) => {
         const label = monthOf(f.filled_at)
         const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
-        const conso = consoByFillup.get(`${f.vehicle_id}|${f.filled_at}`)
+        const conso = consoByFillup.get(`${f.vehicle_id}|${f.energy}|${f.filled_at}`)
+        const electric = f.energy === 'electric'
         return (
           <Fragment key={f.id}>
             {showLabel && (
@@ -329,15 +371,18 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
                 <Thumb path={f.photo_path} />
               ) : (
                 <div className="thumb ph">
-                  <PumpIcon size={22} />
+                  {electric ? <BoltIcon size={22} /> : <PumpIcon size={22} />}
                 </div>
               )}
               <div className="body">
                 <div className="date">
                   {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
+                  {electric && <span className="badge badge-elec">⚡ Recharge</span>}
                   {f.is_draft && <span className="badge badge-draft">À compléter</span>}
                   {f.pending && <span className="badge badge-pending">En attente</span>}
-                  {!f.is_full && !f.is_draft && <span className="badge badge-partial">Partiel</span>}
+                  {!f.is_full && !f.is_draft && (
+                    <span className="badge badge-partial">{electric ? 'Partielle' : 'Partiel'}</span>
+                  )}
                 </div>
                 {f.is_draft ? (
                   <div className="sub" style={{ marginTop: 4 }}>
@@ -346,12 +391,16 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
                 ) : (
                   <>
                     <div className="nums">
-                      {fmtLiters(f.liters)} · {fmtEur(f.total_price)}
+                      {electric ? fmtKwh(f.liters) : fmtLiters(f.liters)} · {fmtEur(f.total_price)}
                     </div>
                     <div className="sub">
                       {conso
-                        ? `${conso.km.toLocaleString('fr-FR')} km · ${fmtConso(conso.per100)} · ${fmtPricePerL(f.price_per_liter)}`
-                        : fmtPricePerL(f.price_per_liter)}
+                        ? `${conso.km.toLocaleString('fr-FR')} km · ${
+                            electric ? fmtConsoElec(conso.per100) : fmtConso(conso.per100)
+                          } · ${electric ? fmtPricePerKwh(f.price_per_liter) : fmtPricePerL(f.price_per_liter)}`
+                        : electric
+                          ? fmtPricePerKwh(f.price_per_liter)
+                          : fmtPricePerL(f.price_per_liter)}
                     </div>
                     <div className="sub2">
                       {fmtKm(f.odometer_km)}

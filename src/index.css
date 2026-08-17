@@ -144,6 +144,8 @@ html, body {
   border-color: var(--ink);
   color: #fff;
 }
+/* Icône dans une pastille (choix carburant / recharge) */
+.chip svg { vertical-align: -3px; margin-right: 4px; }
 /* Variante formulaire : les pastilles passent à la ligne au lieu de défiler */
 .chips.wrap {
   flex-wrap: wrap;
@@ -600,6 +602,7 @@ button { font-family: var(--sans); cursor: pointer; }
 .badge-draft { background: var(--accent); color: var(--ink); }
 .badge-partial { background: var(--ink-08); color: var(--ink-80); }
 .badge-pending { background: var(--ink-08); color: var(--ink-80); border: 1px dashed var(--ink-64); }
+.badge-elec { background: rgba(46, 125, 91, 0.12); color: #2e7d5b; }
 
 /* ---------- Navigation basse flottante ---------- */
 nav.tabs {

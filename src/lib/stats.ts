@@ -1,19 +1,20 @@
-import type { Fillup } from './types'
+import type { Energy, Fillup } from './types'
 
 export interface ConsoPoint {
   date: string // ISO du plein complet qui clôt la période
-  per100: number // L/100 km
+  per100: number // L/100 km (ou kWh/100 km pour l'électrique)
   km: number // distance parcourue sur la période
-  liters: number
+  liters: number // litres, ou kWh pour l'électrique
 }
 
 /**
- * Consommations entre pleins complets successifs munis d'un kilométrage.
- * Les litres des pleins partiels intermédiaires sont comptés dans la période.
+ * Consommations entre pleins complets successifs munis d'un kilométrage,
+ * pour une énergie donnée (carburant ou recharges électriques).
+ * Les litres/kWh des appoints partiels intermédiaires sont comptés dans la période.
  */
-export function consumptionSeries(fillups: Fillup[]): ConsoPoint[] {
-  const chrono = [...fillups]
-    .filter((f) => !f.is_draft)
+export function consumptionSeries(fillups: Fillup[], energy: Energy = 'fuel'): ConsoPoint[] {
+  const chrono = fillups
+    .filter((f) => !f.is_draft && f.energy === energy)
     .sort((a, b) => new Date(a.filled_at).getTime() - new Date(b.filled_at).getTime())
 
   const points: ConsoPoint[] = []
@@ -85,9 +86,9 @@ export interface PricePoint {
   price: number
 }
 
-export function priceSeries(fillups: Fillup[]): PricePoint[] {
+export function priceSeries(fillups: Fillup[], energy: Energy = 'fuel'): PricePoint[] {
   return fillups
-    .filter((f) => f.price_per_liter != null)
+    .filter((f) => f.price_per_liter != null && f.energy === energy)
     .map((f) => ({ date: f.filled_at, price: f.price_per_liter as number }))
     .sort((a, b) => a.date.localeCompare(b.date))
 }
@@ -96,16 +97,18 @@ export interface Summary {
   count: number
   totalSpent: number
   totalLiters: number
+  totalKwh: number
   avgPricePerLiter: number | null
+  avgPricePerKwh: number | null
   avgConso: number | null // L/100 km pondérée par la distance
-  costPerKm: number | null // €/km sur les périodes mesurées
+  avgConsoElec: number | null // kWh/100 km pondérée par la distance
+  costPerKm: number | null // €/km sur les périodes mesurées, énergies cumulées
   trackedKm: number
 }
 
 export function summarize(fillups: Fillup[]): Summary {
   const real = fillups.filter((f) => !f.is_draft)
   const totalSpent = real.reduce((s, f) => s + (f.total_price ?? 0), 0)
-  const totalLiters = real.reduce((s, f) => s + (f.liters ?? 0), 0)
   // Les consommations se calculent véhicule par véhicule : enchaîner les
   // odomètres de véhicules différents fabriquerait des distances fictives.
   const byVehicle = new Map<string, Fillup[]>()
@@ -114,17 +117,45 @@ export function summarize(fillups: Fillup[]): Summary {
     if (group) group.push(f)
     else byVehicle.set(f.vehicle_id, [f])
   }
-  const conso = [...byVehicle.values()].flatMap(consumptionSeries)
-  const trackedKm = conso.reduce((s, p) => s + p.km, 0)
-  const trackedLiters = conso.reduce((s, p) => s + p.liters, 0)
-  const avgConso = trackedKm > 0 ? (trackedLiters / trackedKm) * 100 : null
 
-  // coût des litres consommés sur les périodes mesurées, approximé au prix moyen
-  const avgPricePerLiter = totalLiters > 0 ? totalSpent / totalLiters : null
+  const forEnergy = (energy: Energy) => {
+    const entries = real.filter((f) => f.energy === energy)
+    const spent = entries.reduce((s, f) => s + (f.total_price ?? 0), 0)
+    const units = entries.reduce((s, f) => s + (f.liters ?? 0), 0)
+    const conso = [...byVehicle.values()].flatMap((g) => consumptionSeries(g, energy))
+    const km = conso.reduce((s, p) => s + p.km, 0)
+    const trackedUnits = conso.reduce((s, p) => s + p.liters, 0)
+    const unitPrice = units > 0 ? spent / units : null
+    return {
+      units,
+      unitPrice,
+      per100: km > 0 ? (trackedUnits / km) * 100 : null,
+      km,
+      // coût des unités consommées sur les périodes mesurées, approximé au prix moyen
+      costPerKm: km > 0 && unitPrice != null ? (trackedUnits * unitPrice) / km : null,
+    }
+  }
+
+  const fuel = forEnergy('fuel')
+  const elec = forEnergy('electric')
+
+  // Pour un hybride rechargeable, périodes carburant et électriques couvrent
+  // les mêmes kilomètres : les coûts au km s'additionnent.
   const costPerKm =
-    trackedKm > 0 && avgPricePerLiter != null
-      ? (trackedLiters * avgPricePerLiter) / trackedKm
+    fuel.costPerKm != null || elec.costPerKm != null
+      ? (fuel.costPerKm ?? 0) + (elec.costPerKm ?? 0)
       : null
 
-  return { count: real.length, totalSpent, totalLiters, avgPricePerLiter, avgConso, costPerKm, trackedKm }
+  return {
+    count: real.length,
+    totalSpent,
+    totalLiters: fuel.units,
+    totalKwh: elec.units,
+    avgPricePerLiter: fuel.unitPrice,
+    avgPricePerKwh: elec.unitPrice,
+    avgConso: fuel.per100,
+    avgConsoElec: elec.per100,
+    costPerKm,
+    trackedKm: Math.max(fuel.km, elec.km),
+  }
 }

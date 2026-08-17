@@ -3,7 +3,7 @@ import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { consumptionSeries, monthlyCostsByVehicle, priceSeries, summarize } from '../lib/stats'
-import { fmtConso, fmtEur, fmtKm, fmtPricePerL } from '../lib/format'
+import { fmtConso, fmtConsoElec, fmtEur, fmtKm, fmtPricePerKwh, fmtPricePerL } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
 
 // Série encre pétrole + déclinaisons : accordées à l'identité, contrastées sur blanc
@@ -73,6 +73,8 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
   const summary = summarize(scoped)
   const singleVehicle = vehicleFilter !== 'all'
   const vehicleColor = new Map(vehicles.map((v, i) => [v.id, SERIES[i % SERIES.length]]))
+  const hasFuel = scoped.some((f) => !f.is_draft && f.energy === 'fuel')
+  const hasElec = scoped.some((f) => !f.is_draft && f.energy === 'electric')
 
   const months = useMemo(
     () =>
@@ -97,11 +99,25 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
         tip: `${dayLabel(p.date)}\n${fmtConso(p.per100)} sur ${fmtKm(p.km)}`,
       }))
     : []
+  const consoElec = singleVehicle
+    ? consumptionSeries(scoped, 'electric').map((p) => ({
+        ...p,
+        label: dayLabel(p.date),
+        tip: `${dayLabel(p.date)}\n${fmtConsoElec(p.per100)} sur ${fmtKm(p.km)}`,
+      }))
+    : []
   const prices = singleVehicle
     ? priceSeries(scoped).map((p) => ({
         ...p,
         label: dayLabel(p.date),
         tip: `${dayLabel(p.date)}\n${fmtPricePerL(p.price)}`,
+      }))
+    : []
+  const pricesElec = singleVehicle
+    ? priceSeries(scoped, 'electric').map((p) => ({
+        ...p,
+        label: dayLabel(p.date),
+        tip: `${dayLabel(p.date)}\n${fmtPricePerKwh(p.price)}`,
       }))
     : []
 
@@ -147,13 +163,23 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
           <div className="meter-label">Total dépensé</div>
         </div>
         <div className="meter-row">
-          <Meter value={num(summary.avgConso, 1)} unit="L/100" label="Conso moyenne" />
+          {(hasFuel || !hasElec) && (
+            <Meter value={num(summary.avgConso, 1)} unit="L/100" label={hasElec ? 'Conso carburant' : 'Conso moyenne'} />
+          )}
+          {hasElec && (
+            <Meter value={num(summary.avgConsoElec, 1)} unit="kWh/100" label={hasFuel ? 'Conso élec' : 'Conso moyenne'} />
+          )}
           <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
-          <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label="Prix moyen" />
+          {(hasFuel || !hasElec) && (
+            <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label={hasElec ? 'Prix du litre' : 'Prix moyen'} />
+          )}
+          {hasElec && (
+            <Meter value={num(summary.avgPricePerKwh, 3)} unit="€/kWh" label={hasFuel ? 'Prix du kWh' : 'Prix moyen'} />
+          )}
         </div>
-        {summary.avgConso == null && (
+        {summary.avgConso == null && summary.avgConsoElec == null && (
           <p className="hero-note">
-            La consommation se calcule entre deux pleins complets avec kilométrage relevé
+            La consommation se calcule entre deux pleins (ou charges) complets avec kilométrage relevé
             {singleVehicle ? '.' : ' — choisis un véhicule en haut pour la voir.'}
           </p>
         )}
@@ -169,6 +195,21 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
               <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      )}
+
+      {singleVehicle && consoElec.length > 0 && (
+        <section className="card">
+          <h2>Consommation électrique (kWh/100 km)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={consoElec} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
+              <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
+              <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -224,11 +265,33 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
         </section>
       )}
 
+      {singleVehicle && pricesElec.length > 1 && (
+        <section className="card">
+          <h2>Prix du kWh (€/kWh)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={pricesElec} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
+              <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(2)} />
+              <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      )}
+
       {!singleVehicle && vehicles.length > 1 && (
         <section className="card">
           <h2>Par véhicule</h2>
           {vehicles.map((v) => {
             const s = summarize(scoped.filter((f) => f.vehicle_id === v.id))
+            const consoTxt =
+              [
+                s.avgConso != null ? fmtConso(s.avgConso) : null,
+                s.avgConsoElec != null ? fmtConsoElec(s.avgConsoElec) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'conso —'
             return (
               <div key={v.id} className="fillup-item">
                 <div className="body">
@@ -239,7 +302,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
                   <div className="sub">
                     {s.count === 0
                       ? 'aucun plein sur la période'
-                      : `${s.count} pleins · ${fmtEur(s.totalSpent)} · ${s.avgConso != null ? fmtConso(s.avgConso) : 'conso —'}`}
+                      : `${s.count} pleins · ${fmtEur(s.totalSpent)} · ${consoTxt}`}
                   </div>
                 </div>
               </div>
