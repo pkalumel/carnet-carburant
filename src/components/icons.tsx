@@ -132,6 +132,15 @@ export function KeyIcon({ size = 18 }: IconProps) {
   )
 }
 
+export function ShieldIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>
+      <path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" />
+      <path d="M9.2 12.2l2 2 3.6-4" />
+    </svg>
+  )
+}
+
 export function CameraIcon({ size = 26 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>

@@ -879,6 +879,65 @@ nav.tabs button.active {
 .row-actions { display: flex; gap: 8px; margin-top: 12px; }
 .row-actions .btn-ghost { flex: 1; }
 
+/* ---------- Console d'administration ---------- */
+/* La console s'affranchit du gabarit mobile ; la nav basse garde ses 528 px */
+body.admin-wide #root { max-width: 1160px; }
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.admin-toolbar input[type="text"] {
+  flex: 1;
+  width: auto;
+  min-width: 200px;
+}
+.admin-toolbar select.admin-sort { width: auto; }
+
+.fillup-item.admin-row { text-align: left; }
+@media (hover: hover) {
+  .fillup-item.admin-row:hover { background: var(--ink-08); cursor: pointer; }
+}
+.admin-email { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.admin-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+.admin-dist-label {
+  flex: 0 0 128px;
+  font-size: 14px;
+  color: var(--ink-80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-dist-bar {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--ink-08);
+  overflow: hidden;
+}
+.admin-dist-bar > span { display: block; height: 100%; border-radius: 6px; }
+.admin-dist-n {
+  flex: 0 0 48px;
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
 /* ---------- Micro-animations ---------- */
 @media (prefers-reduced-motion: no-preference) {
   main.content > * {

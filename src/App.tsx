@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { flushOutbox, loadFillups, loadVehicles } from './lib/db'
+import { checkIsAdmin } from './lib/adminDb'
 import { listOutbox } from './lib/outbox'
 import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
@@ -9,12 +10,13 @@ import FillupForm from './components/FillupForm'
 import History from './components/History'
 import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
-import { GearIcon, HistoryIcon, PumpIcon, StatsIcon } from './components/icons'
+import { GearIcon, HistoryIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
 import { usePwaUpdate } from './lib/pwa'
 
 const Stats = lazy(() => import('./components/Stats'))
+const Admin = lazy(() => import('./components/Admin'))
 
-type Tab = 'new' | 'history' | 'stats' | 'settings'
+type Tab = 'new' | 'history' | 'stats' | 'settings' | 'admin'
 
 const VEHICLE_KEY = 'carnet:vehicle'
 
@@ -29,6 +31,7 @@ export default function App() {
     () => localStorage.getItem(VEHICLE_KEY) ?? 'all',
   )
   const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const update = usePwaUpdate()
 
   const showToast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
@@ -80,6 +83,22 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(VEHICLE_KEY, vehicleFilter)
   }, [vehicleFilter])
+
+  // Détection admin, indépendante de refresh() et de son retry : en cas
+  // d'échec réseau l'onglet reste caché (la console est un usage en ligne).
+  useEffect(() => {
+    if (!session) {
+      setIsAdmin(false)
+      return
+    }
+    void checkIsAdmin().then(setIsAdmin)
+  }, [session])
+
+  // La console admin s'affranchit du gabarit mobile de 560 px
+  useEffect(() => {
+    document.body.classList.toggle('admin-wide', tab === 'admin')
+    return () => document.body.classList.remove('admin-wide')
+  }, [tab])
 
   if (session === undefined) return null
   if (!session) return <AuthScreen />
@@ -205,6 +224,12 @@ export default function App() {
             showToast={showToast}
           />
         )}
+
+        {tab === 'admin' && isAdmin && (
+          <Suspense fallback={<div className="card empty">Chargement…</div>}>
+            <Admin showToast={showToast} />
+          </Suspense>
+        )}
       </main>
 
       <nav className="tabs">
@@ -221,6 +246,11 @@ export default function App() {
           <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
             <span className="ico"><GearIcon /></span>Réglages
           </button>
+          {isAdmin && (
+            <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>
+              <span className="ico"><ShieldIcon /></span>Admin
+            </button>
+          )}
         </div>
       </nav>
 

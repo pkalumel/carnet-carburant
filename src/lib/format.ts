@@ -12,6 +12,14 @@ export const fmtKm = (v: number | null | undefined) => (v == null ? '—' : `${n
 export const fmtConso = (v: number | null | undefined) => (v == null ? '—' : `${nf1.format(v)} L/100`)
 export const fmtConsoElec = (v: number | null | undefined) => (v == null ? '—' : `${nf1.format(v)} kWh/100`)
 
+export const fmtBytes = (v: number | null | undefined) => {
+  if (v == null) return '—'
+  if (v < 1024) return `${nf0.format(v)} o`
+  if (v < 1024 * 1024) return `${nf1.format(v / 1024)} ko`
+  if (v < 1024 * 1024 * 1024) return `${nf1.format(v / (1024 * 1024))} Mo`
+  return `${nf1.format(v / (1024 * 1024 * 1024))} Go`
+}
+
 export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
