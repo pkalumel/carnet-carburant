@@ -4,12 +4,9 @@ import {
 } from 'recharts'
 import { consumptionSeries, monthlyCostsByVehicle, priceSeries, summarize } from '../lib/stats'
 import { fmtConso, fmtConsoElec, fmtEur, fmtKm, fmtPricePerKwh, fmtPricePerL } from '../lib/format'
+import { AXIS, GRID, SERIES } from '../lib/chartTheme'
+import { Meter, Tip } from './chartKit'
 import type { Fillup, Vehicle } from '../lib/types'
-
-// Série encre pétrole + déclinaisons : accordées à l'identité, contrastées sur blanc
-const SERIES = ['#26303c', '#dd9f0e', '#4a6fa5', '#2e7d5b', '#b3402f', '#7d5ba6']
-const GRID = '#e4e2da'
-const AXIS = '#6e7781'
 
 interface Props {
   fillups: Fillup[]
@@ -28,36 +25,6 @@ const monthLabel = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
 const dayLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-
-function Meter({ value, unit, label }: { value: string; unit?: string; label: string }) {
-  return (
-    <div>
-      <div className="meter-big">
-        {value}
-        {unit && <span className="meter-unit">{unit}</span>}
-      </div>
-      <div className="meter-label">{label}</div>
-    </div>
-  )
-}
-
-interface TipPayload {
-  payload?: { tip: string }
-}
-
-function Tip({ active, payload }: { active?: boolean; payload?: TipPayload[] }) {
-  if (!active || !payload?.length || !payload[0].payload) return null
-  return (
-    <div
-      style={{
-        background: '#16202b', color: '#fff', borderRadius: 8, padding: '6px 10px',
-        fontSize: 13, fontFamily: 'var(--mono)', whiteSpace: 'pre-line',
-      }}
-    >
-      {payload[0].payload.tip}
-    </div>
-  )
-}
 
 export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
   const [period, setPeriod] = useState<Period>('12m')
