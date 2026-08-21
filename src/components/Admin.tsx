@@ -264,7 +264,16 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
               ))}
             </section>
 
-            {!detail.user.is_admin && (
+            {detail.user.is_admin ? (
+              <section className="card">
+                <h2>Actions</h2>
+                <p className="settings-note">
+                  Ce compte est administrateur : il ne peut être ni banni ni supprimé depuis la
+                  console. Pour lui retirer ce statut, retire sa ligne de la table{' '}
+                  <strong>admins</strong> dans le SQL Editor de Supabase.
+                </p>
+              </section>
+            ) : (
               <section className="card">
                 <h2>Actions</h2>
                 <div className="row-actions">
