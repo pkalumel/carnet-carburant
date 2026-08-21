@@ -889,7 +889,8 @@ nav.tabs button.active {
 .screen-narrow,
 .stats-grid,
 .settings-grid,
-.settings-aside { display: contents; }
+.settings-aside,
+.history-list { display: contents; }
 .history-table-wrap { display: none; }
 
 @media (min-width: 980px) {
