@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
@@ -7,7 +7,7 @@ import {
 } from '../lib/adminDb'
 import type { AdminHealth, AdminOverview, AdminUserDetail, AdminUserRow } from '../lib/adminDb'
 import { AXIS, GRID, SERIES } from '../lib/chartTheme'
-import { Meter, Tip } from './chartKit'
+import { Tip } from './chartKit'
 import { fmtBytes, fmtDate, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters } from '../lib/format'
 import { BoltIcon, PumpIcon, TrashIcon, XIcon } from './icons'
 
@@ -15,8 +15,9 @@ interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
-type View = 'overview' | 'users' | 'health'
+type SortKey = 'activity' | 'created' | 'fillups' | 'email'
 const PAGE = 50
+const DAY_MS = 86_400_000
 
 const nf0 = new Intl.NumberFormat('fr-FR')
 
@@ -25,9 +26,62 @@ const weekLabel = (iso: string) =>
 
 const ago = (iso: string | null) => (iso == null ? 'jamais' : `le ${fmtDate(iso)}`)
 
-// ---------- Vue d'ensemble ----------
+const isBanned = (until: string | null) => until != null && new Date(until) > new Date()
+const isActive = (lastFillup: string | null) =>
+  lastFillup != null && Date.now() - new Date(lastFillup).getTime() < 30 * DAY_MS
 
-function WeeklyCard({ title, points, color, noun }: {
+function StatusBadge({ u }: { u: AdminUserRow }) {
+  if (isBanned(u.banned_until)) return <span className="badge badge-pending">Banni</span>
+  if (u.is_admin) return <span className="badge badge-draft">Admin</span>
+  if (isActive(u.last_fillup_at)) return <span className="badge badge-elec">Actif</span>
+  return <span className="badge badge-partial">Dormant</span>
+}
+
+// ---------- Bandeau KPI ----------
+
+function KpiStrip({ overview, health }: { overview: AdminOverview; health: AdminHealth | null }) {
+  const anomalies =
+    health == null ? null : health.orphan_photos + health.missing_photos + health.orphan_vehicles
+  return (
+    <section className="card admin-kpis">
+      <div>
+        <div className="meter-big" style={{ color: 'var(--accent-press)' }}>
+          {nf0.format(overview.users_total)}
+        </div>
+        <div className="meter-label">Comptes</div>
+      </div>
+      <div>
+        <div className="meter-big">{nf0.format(overview.vehicles_total)}</div>
+        <div className="meter-label">Véhicules</div>
+      </div>
+      <div>
+        <div className="meter-big">{nf0.format(overview.fillups_total)}</div>
+        <div className="meter-label">Pleins</div>
+      </div>
+      <div>
+        <div className="meter-big">{nf0.format(overview.active_7d)}</div>
+        <div className="meter-label">Actifs 7 j</div>
+      </div>
+      <div>
+        <div className="meter-big">{nf0.format(overview.active_30d)}</div>
+        <div className="meter-label">Actifs 30 j</div>
+      </div>
+      <div>
+        <div
+          className="meter-big"
+          style={anomalies != null && anomalies > 0 ? { color: 'var(--danger)' } : undefined}
+        >
+          {anomalies == null ? '—' : nf0.format(anomalies)}
+        </div>
+        <div className="meter-label">Anomalies</div>
+      </div>
+    </section>
+  )
+}
+
+// ---------- Colonne latérale : graphes + santé ----------
+
+function WeeklyMini({ title, points, color, noun }: {
   title: string
   points: { week: string; n: number }[]
   color: string
@@ -41,107 +95,68 @@ function WeeklyCard({ title, points, color, noun }: {
   return (
     <section className="card">
       <h2>{title}</h2>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={120}>
+        <BarChart data={data} margin={{ top: 4, right: 4, left: -22, bottom: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: AXIS }}
+            tick={{ fontSize: 10, fill: AXIS }}
             tickLine={false}
             axisLine={{ stroke: GRID }}
-            minTickGap={24}
+            minTickGap={28}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: AXIS }}
+            tick={{ fontSize: 10, fill: AXIS }}
             tickLine={false}
             axisLine={false}
-            width={44}
+            width={36}
             allowDecimals={false}
           />
           <Tooltip content={<Tip />} cursor={{ fill: 'rgba(22, 32, 43, 0.06)' }} />
-          <Bar dataKey="n" fill={color} maxBarSize={36} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="n" fill={color} maxBarSize={22} radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </section>
   )
 }
 
-function Distribution({ title, entries }: { title: string; entries: Record<string, number> }) {
-  const rows = Object.entries(entries).sort((a, b) => b[1] - a[1])
-  const max = rows.length > 0 ? rows[0][1] : 0
+function HealthCard({ health }: { health: AdminHealth }) {
+  const bad = (n: number) =>
+    n > 0 ? { color: 'var(--danger)', fontWeight: 700 } : { color: 'var(--ok)', fontWeight: 600 }
   return (
     <section className="card">
-      <h2>{title}</h2>
-      {rows.length === 0 && <div className="settings-note">Aucune donnée pour l’instant.</div>}
-      {rows.map(([label, n], i) => (
-        <div key={label} className="admin-dist-row">
-          <span className="admin-dist-label">{label === 'fuel' ? 'Carburant' : label === 'electric' ? 'Recharge' : label}</span>
-          <span className="admin-dist-bar">
-            <span
-              style={{
-                width: `${max > 0 ? Math.max((n / max) * 100, 4) : 0}%`,
-                background: SERIES[i % SERIES.length],
-              }}
-            />
-          </span>
-          <span className="admin-dist-n">{nf0.format(n)}</span>
+      <h2>Santé</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="admin-health-row">
+          <span>Photos (volume)</span>
+          <span className="admin-num">{fmtBytes(health.photo_bytes)}</span>
         </div>
-      ))}
+        <div className="admin-health-row">
+          <span>Photos orphelines / manquantes</span>
+          <span className="admin-num" style={bad(health.orphan_photos + health.missing_photos)}>
+            {nf0.format(health.orphan_photos)} / {nf0.format(health.missing_photos)}
+          </span>
+        </div>
+        <div className="admin-health-row">
+          <span>Brouillons &gt; 7 j</span>
+          <span className="admin-num">{nf0.format(health.stale_drafts)}</span>
+        </div>
+        <div className="admin-health-row">
+          <span>Table des pleins</span>
+          <span className="admin-num">{fmtBytes(health.fillups_bytes)}</span>
+        </div>
+        <div className="admin-health-row">
+          <span>Véhicules orphelins</span>
+          <span className="admin-num" style={bad(health.orphan_vehicles)}>
+            {nf0.format(health.orphan_vehicles)}
+          </span>
+        </div>
+      </div>
     </section>
   )
 }
 
-function Overview({ showToast }: Props) {
-  const [data, setData] = useState<AdminOverview | null>(null)
-
-  useEffect(() => {
-    fetchOverview().then(setData).catch((e: Error) => showToast(e.message, 'err'))
-  }, [showToast])
-
-  if (!data) return <div className="card empty">Chargement…</div>
-
-  return (
-    <>
-      <section className="card hero">
-        <h2>En un coup d’œil</h2>
-        <div className="meter-lead-row">
-          <div className="meter-big lead">
-            {nf0.format(data.users_total)}
-            <span className="meter-unit">comptes</span>
-          </div>
-        </div>
-        <div className="meter-row">
-          <Meter value={nf0.format(data.vehicles_total)} label="Véhicules" />
-          <Meter value={nf0.format(data.fillups_total)} label="Pleins" />
-          <Meter value={nf0.format(data.active_7d)} label="Actifs 7 j" />
-          <Meter value={nf0.format(data.active_30d)} label="Actifs 30 j" />
-          <Meter value={nf0.format(data.signed_in_30d)} label="Connectés 30 j" />
-          <Meter value={nf0.format(data.drafts_total)} label="Brouillons" />
-        </div>
-      </section>
-      <div className="admin-grid">
-        <WeeklyCard
-          title="Inscriptions par semaine"
-          points={data.signups_weekly}
-          color={SERIES[0]}
-          noun="inscriptions"
-        />
-        <WeeklyCard
-          title="Pleins saisis par semaine"
-          points={data.fillups_weekly}
-          color={SERIES[1]}
-          noun="pleins"
-        />
-      </div>
-      <div className="admin-grid">
-        <Distribution title="Pleins par énergie" entries={data.by_energy} />
-        <Distribution title="Véhicules par carburant" entries={data.by_fuel} />
-      </div>
-    </>
-  )
-}
-
-// ---------- Utilisateurs ----------
+// ---------- Fiche utilisateur (bottom sheet) ----------
 
 function UserSheet({ userId, showToast, onClose, onChanged }: {
   userId: string
@@ -168,7 +183,7 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
     }
   }, [])
 
-  const banned = detail?.user.banned_until != null && new Date(detail.user.banned_until) > new Date()
+  const banned = detail != null && isBanned(detail.user.banned_until)
 
   const act = async (action: 'ban' | 'unban' | 'delete', doneMsg: string) => {
     setBusy(true)
@@ -303,10 +318,40 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
   )
 }
 
-function Users({ showToast }: Props) {
+// ---------- Tableau / liste des utilisateurs ----------
+
+const sub = (u: AdminUserRow) =>
+  `${nf0.format(u.vehicle_count)} véh. · ${nf0.format(u.fillup_count)} ${
+    u.fillup_count > 1 ? 'pleins' : 'plein'
+  } · dernier ${ago(u.last_fillup_at)}`
+
+function SortTh({ label, k, sort, dir, onSort, align }: {
+  label: string
+  k: SortKey
+  sort: SortKey
+  dir: 'asc' | 'desc'
+  onSort: (k: SortKey) => void
+  align?: 'right'
+}) {
+  return (
+    <th style={align ? { textAlign: align } : undefined}>
+      <button onClick={() => onSort(k)}>
+        {label}
+        {sort === k ? (dir === 'desc' ? ' ↓' : ' ↑') : ''}
+      </button>
+    </th>
+  )
+}
+
+// ---------- Console ----------
+
+export default function Admin({ showToast }: Props) {
+  const [overview, setOverview] = useState<AdminOverview | null>(null)
+  const [health, setHealth] = useState<AdminHealth | null>(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'all' | 'active' | 'dormant'>('all')
-  const [sort, setSort] = useState<'activity' | 'created' | 'fillups' | 'email'>('activity')
+  const [sort, setSort] = useState<SortKey>('activity')
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc')
   const [rows, setRows] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -314,11 +359,16 @@ function Users({ showToast }: Props) {
 
   const total = rows.length > 0 ? rows[0].total_count : 0
 
+  useEffect(() => {
+    fetchOverview().then(setOverview).catch((e: Error) => showToast(e.message, 'err'))
+    fetchHealth().then(setHealth).catch((e: Error) => showToast(e.message, 'err'))
+  }, [showToast])
+
   const load = useCallback(
     async (offset: number) => {
       setLoading(true)
       try {
-        const page = await fetchUsers({ search, status, sort, limit: PAGE, offset })
+        const page = await fetchUsers({ search, status, sort, dir, limit: PAGE, offset })
         setRows((prev) => (offset === 0 ? page : [...prev, ...page]))
       } catch (e) {
         showToast(e instanceof Error ? e.message : String(e), 'err')
@@ -326,7 +376,7 @@ function Users({ showToast }: Props) {
         setLoading(false)
       }
     },
-    [search, status, sort, showToast],
+    [search, status, sort, dir, showToast],
   )
 
   // Recherche débouncée ; filtres et tri rechargent immédiatement
@@ -336,8 +386,29 @@ function Users({ showToast }: Props) {
     return () => window.clearTimeout(debounce.current)
   }, [load])
 
+  const onSort = (k: SortKey) => {
+    if (sort === k) {
+      setDir((d) => (d === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setSort(k)
+      setDir(k === 'email' ? 'asc' : 'desc')
+    }
+  }
+
+  const refresh = () => {
+    void load(0)
+    fetchHealth().then(setHealth).catch(() => undefined)
+    fetchOverview().then(setOverview).catch(() => undefined)
+  }
+
   return (
     <>
+      {overview ? (
+        <KpiStrip overview={overview} health={health} />
+      ) : (
+        <div className="card empty">Chargement…</div>
+      )}
+
       <div className="admin-toolbar">
         <input
           type="text"
@@ -367,7 +438,11 @@ function Users({ showToast }: Props) {
         <select
           className="input admin-sort"
           value={sort}
-          onChange={(e) => setSort(e.target.value as typeof sort)}
+          onChange={(e) => {
+            const k = e.target.value as SortKey
+            setSort(k)
+            setDir(k === 'email' ? 'asc' : 'desc')
+          }}
           aria-label="Trier par"
         >
           <option value="activity">Dernière saisie</option>
@@ -377,134 +452,97 @@ function Users({ showToast }: Props) {
         </select>
       </div>
 
-      <section className="card">
-        <h2>
-          Utilisateurs{total > 0 && ` (${nf0.format(total)})`}
-        </h2>
-        {rows.map((u) => {
-          const banned = u.banned_until != null && new Date(u.banned_until) > new Date()
-          return (
-            <button key={u.user_id} className="fillup-item admin-row" onClick={() => setDetailId(u.user_id)}>
-              <div className="body">
-                <div className="date">
-                  <span className="admin-email">{u.email}</span>
-                  {u.is_admin && <span className="badge badge-draft">Admin</span>}
-                  {banned && <span className="badge badge-pending">Banni</span>}
-                </div>
-                <div className="sub">
-                  {nf0.format(u.vehicle_count)} {u.vehicle_count > 1 ? 'véhicules' : 'véhicule'} ·{' '}
-                  {nf0.format(u.fillup_count)} {u.fillup_count > 1 ? 'pleins' : 'plein'} · dernier{' '}
-                  {ago(u.last_fillup_at)}
-                </div>
-                <div className="sub2">
-                  Inscrit le {fmtDate(u.user_created_at)} · dernière connexion {ago(u.last_sign_in_at)}
-                </div>
-              </div>
-            </button>
-          )
-        })}
-        {!loading && rows.length === 0 && (
-          <div className="settings-note">Aucun compte ne correspond.</div>
-        )}
-        {loading && <div className="settings-note">Chargement…</div>}
-        {!loading && rows.length < total && (
-          <div className="row-actions">
-            <button className="btn-ghost" onClick={() => void load(rows.length)}>
-              Charger plus ({nf0.format(total - rows.length)} restants)
-            </button>
+      <div className="admin-split">
+        <section className="card" style={{ padding: '12px 12px 8px' }}>
+          {/* Desktop : vrai tableau triable */}
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <SortTh label="E-mail" k="email" sort={sort} dir={dir} onSort={onSort} />
+                  <th style={{ textAlign: 'right' }}>Véhicules</th>
+                  <SortTh label="Pleins" k="fillups" sort={sort} dir={dir} onSort={onSort} align="right" />
+                  <SortTh label="Dernier plein" k="activity" sort={sort} dir={dir} onSort={onSort} />
+                  <SortTh label="Inscription" k="created" sort={sort} dir={dir} onSort={onSort} />
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((u) => (
+                  <tr key={u.user_id} onClick={() => setDetailId(u.user_id)}>
+                    <td className="admin-num" style={{ fontWeight: 600 }}>{u.email}</td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>{nf0.format(u.vehicle_count)}</td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>{nf0.format(u.fillup_count)}</td>
+                    <td className="admin-num">{u.last_fillup_at ? fmtDate(u.last_fillup_at) : '—'}</td>
+                    <td className="admin-num">{fmtDate(u.user_created_at)}</td>
+                    <td><StatusBadge u={u} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </section>
+
+          {/* Mobile : liste à deux lignes */}
+          <div className="admin-list">
+            {rows.map((u) => (
+              <button key={u.user_id} className="fillup-item admin-row" onClick={() => setDetailId(u.user_id)}>
+                <div className="body">
+                  <div className="date admin-email">{u.email}</div>
+                  <div className="sub">{sub(u)}</div>
+                </div>
+                <StatusBadge u={u} />
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 12px 8px' }}>
+            <span style={{ fontSize: 13, color: 'var(--ink-64)' }}>
+              {loading ? 'Chargement…' : `${nf0.format(rows.length)} sur ${nf0.format(total)} comptes`}
+            </span>
+            {!loading && rows.length === 0 && (
+              <span style={{ fontSize: 13, color: 'var(--ink-64)' }}>Aucun compte ne correspond.</span>
+            )}
+            {!loading && rows.length < total && (
+              <button
+                className="btn-ghost"
+                style={{ marginLeft: 'auto', flex: 'none' }}
+                onClick={() => void load(rows.length)}
+              >
+                Charger plus ({nf0.format(total - rows.length)} restants)
+              </button>
+            )}
+          </div>
+        </section>
+
+        <div className="admin-aside">
+          {overview && (
+            <>
+              <WeeklyMini
+                title="Inscriptions / sem."
+                points={overview.signups_weekly}
+                color={SERIES[0]}
+                noun="inscriptions"
+              />
+              <WeeklyMini
+                title="Pleins / sem."
+                points={overview.fillups_weekly}
+                color={SERIES[1]}
+                noun="pleins"
+              />
+            </>
+          )}
+          {health && <HealthCard health={health} />}
+        </div>
+      </div>
 
       {detailId && (
         <UserSheet
           userId={detailId}
           showToast={showToast}
           onClose={() => setDetailId(null)}
-          onChanged={() => void load(0)}
+          onChanged={refresh}
         />
       )}
-    </>
-  )
-}
-
-// ---------- Santé technique ----------
-
-function Health({ showToast }: Props) {
-  const [data, setData] = useState<AdminHealth | null>(null)
-
-  useEffect(() => {
-    fetchHealth().then(setData).catch((e: Error) => showToast(e.message, 'err'))
-  }, [showToast])
-
-  if (!data) return <div className="card empty">Chargement…</div>
-
-  const alert = (n: number) => (n > 0 ? { color: 'var(--danger)' } : undefined)
-
-  return (
-    <>
-      <section className="card">
-        <h2>Stockage</h2>
-        <div className="meter-row">
-          <Meter value={fmtBytes(data.photo_bytes)} label="Photos (volume)" />
-          <Meter value={nf0.format(data.photo_count)} label="Photos (nombre)" />
-          <Meter value={fmtBytes(data.fillups_bytes)} label="Table des pleins" />
-          <Meter value={fmtBytes(data.vehicles_bytes)} label="Table des véhicules" />
-        </div>
-      </section>
-      <section className="card">
-        <h2>Anomalies</h2>
-        <div className="meter-row">
-          <div>
-            <div className="meter-big" style={alert(data.orphan_photos)}>{nf0.format(data.orphan_photos)}</div>
-            <div className="meter-label">Photos orphelines</div>
-          </div>
-          <div>
-            <div className="meter-big" style={alert(data.missing_photos)}>{nf0.format(data.missing_photos)}</div>
-            <div className="meter-label">Photos manquantes</div>
-          </div>
-          <div>
-            <div className="meter-big" style={alert(data.orphan_vehicles)}>{nf0.format(data.orphan_vehicles)}</div>
-            <div className="meter-label">Véhicules orphelins</div>
-          </div>
-          <Meter value={nf0.format(data.stale_drafts)} label="Brouillons > 7 j" />
-        </div>
-        <div className="settings-note">
-          Photos orphelines : fichiers sans plein correspondant. Photos manquantes : pleins dont le
-          fichier a disparu. Véhicules orphelins : compte parent supprimé (doit rester à zéro).
-        </div>
-      </section>
-    </>
-  )
-}
-
-// ---------- Console ----------
-
-export default function Admin({ showToast }: Props) {
-  const [view, setView] = useState<View>('overview')
-
-  const views = useMemo(
-    () =>
-      [
-        ['overview', 'Vue d’ensemble'],
-        ['users', 'Utilisateurs'],
-        ['health', 'Santé'],
-      ] as const,
-    [],
-  )
-
-  return (
-    <>
-      <div className="seg admin-seg">
-        {views.map(([key, label]) => (
-          <button key={key} className={view === key ? 'active' : ''} onClick={() => setView(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
-      {view === 'overview' && <Overview showToast={showToast} />}
-      {view === 'users' && <Users showToast={showToast} />}
-      {view === 'health' && <Health showToast={showToast} />}
     </>
   )
 }

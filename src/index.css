@@ -879,15 +879,19 @@ nav.tabs button.active {
 .row-actions { display: flex; gap: 8px; margin-top: 12px; }
 .row-actions .btn-ghost { flex: 1; }
 
-/* ---------- Console d'administration ---------- */
+/* ---------- Console d'administration (disposition « tableau d'abord ») ---------- */
 /* La console s'affranchit du gabarit mobile ; la nav basse garde ses 528 px */
 body.admin-wide #root { max-width: 1160px; }
 
-.admin-grid {
+/* Bandeau KPI : 6 cases séparées par des filets en desktop, grille 3×2 en mobile */
+.card.admin-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 16px 0;
 }
+.card.admin-kpis > div { padding: 4px 24px; border-right: 1px solid var(--line); }
+.card.admin-kpis > div:last-child { border-right: none; }
+.card.admin-kpis .meter-big { font-size: 24px; }
 
 .admin-toolbar {
   display: flex;
@@ -902,40 +906,80 @@ body.admin-wide #root { max-width: 1160px; }
 }
 .admin-toolbar select.admin-sort { width: auto; }
 
-.fillup-item.admin-row { text-align: left; }
+/* Tableau (desktop) + colonne latérale graphes/santé */
+.admin-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.admin-aside { display: flex; flex-direction: column; gap: 16px; }
+
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-64);
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1.5px solid var(--line);
+  white-space: nowrap;
+}
+.admin-table th button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.admin-table td {
+  font-size: 14px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr { cursor: pointer; }
+@media (hover: hover) {
+  .admin-table tbody tr:hover td { background: var(--ink-08); }
+}
+.admin-num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.admin-email {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-health-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-80);
+}
+
+.fillup-item.admin-row { text-align: left; align-items: center; gap: 10px; }
 @media (hover: hover) {
   .fillup-item.admin-row:hover { background: var(--ink-08); cursor: pointer; }
 }
-.admin-email { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-.admin-dist-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 32px;
+/* Repli mobile : le tableau devient une liste à deux lignes */
+.admin-list { display: none; flex-direction: column; }
+@media (max-width: 979px) {
+  .admin-split { grid-template-columns: 1fr; }
+  .admin-table-wrap { display: none; }
+  .admin-list { display: flex; }
+  .card.admin-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; padding: 16px 20px; }
+  .card.admin-kpis > div { padding: 0; border-right: none; }
+  .card.admin-kpis .meter-big { font-size: 20px; }
 }
-.admin-dist-label {
-  flex: 0 0 128px;
-  font-size: 14px;
-  color: var(--ink-80);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.admin-dist-bar {
-  flex: 1;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--ink-08);
-  overflow: hidden;
-}
-.admin-dist-bar > span { display: block; height: 100%; border-radius: 6px; }
-.admin-dist-n {
-  flex: 0 0 48px;
-  text-align: right;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
+@media (min-width: 980px) {
+  .admin-toolbar select.admin-sort { display: none; }
 }
 
 /* ---------- Micro-animations ---------- */
