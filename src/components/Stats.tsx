@@ -152,6 +152,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
         )}
       </section>
 
+      <div className="stats-grid">
       {singleVehicle && conso.length > 0 && (
         <section className="card">
           <h2>Consommation (L/100 km)</h2>
@@ -277,6 +278,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
           })}
         </section>
       )}
+      </div>
     </>
   )
 }

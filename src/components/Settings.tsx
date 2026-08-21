@@ -75,9 +75,10 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
   }
 
   return (
-    <>
+    <div className="settings-grid">
       <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={onChanged} showToast={showToast} />
 
+      <div className="settings-aside">
       <section className="card">
         <h2>Données</h2>
         <p className="settings-note">
@@ -120,6 +121,7 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
           <LogoutIcon /> Se déconnecter
         </button>
       </section>
-    </>
+      </div>
+    </div>
   )
 }

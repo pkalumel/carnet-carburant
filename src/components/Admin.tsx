@@ -469,7 +469,7 @@ export default function Admin({ showToast }: Props) {
               </thead>
               <tbody>
                 {rows.map((u) => (
-                  <tr key={u.user_id} onClick={() => setDetailId(u.user_id)}>
+                  <tr key={u.user_id} className="rowlink" onClick={() => setDetailId(u.user_id)}>
                     <td className="admin-num" style={{ fontWeight: 600 }}>{u.email}</td>
                     <td className="admin-num" style={{ textAlign: 'right' }}>{nf0.format(u.vehicle_count)}</td>
                     <td className="admin-num" style={{ textAlign: 'right' }}>{nf0.format(u.fillup_count)}</td>

@@ -94,12 +94,6 @@ export default function App() {
     void checkIsAdmin().then(setIsAdmin)
   }, [session])
 
-  // La console admin s'affranchit du gabarit mobile de 560 px
-  useEffect(() => {
-    document.body.classList.toggle('admin-wide', tab === 'admin')
-    return () => document.body.classList.remove('admin-wide')
-  }, [tab])
-
   if (session === undefined) return null
   if (!session) return <AuthScreen />
 
@@ -161,7 +155,7 @@ export default function App() {
 
       <main className="content">
         {tab === 'new' && (
-          <>
+          <div className="screen-narrow">
             {vehicles.length === 0 ? (
               <>
                 <div className="card empty">
@@ -196,7 +190,7 @@ export default function App() {
                 />
               </>
             )}
-          </>
+          </div>
         )}
 
         {tab === 'history' && (

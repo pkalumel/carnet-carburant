@@ -344,6 +344,87 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
           {drafts.length === 1 ? '1 plein à compléter' : `${drafts.length} pleins à compléter`} — ouvrir
         </button>
       )}
+      {/* Desktop : tableau d'abord (la liste ci-dessous reprend la main en mobile) */}
+      <div className="history-table-wrap card" style={{ padding: '4px 12px 8px' }}>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Véhicule</th>
+              <th style={{ textAlign: 'right' }}>Litres / kWh</th>
+              <th style={{ textAlign: 'right' }}>Prix</th>
+              <th style={{ textAlign: 'right' }}>€/L · €/kWh</th>
+              <th style={{ textAlign: 'right' }}>Compteur</th>
+              <th style={{ textAlign: 'right' }}>Conso</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {fillups.map((f, i) => {
+              const label = monthOf(f.filled_at)
+              const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
+              const conso = consoByFillup.get(`${f.vehicle_id}|${f.energy}|${f.filled_at}`)
+              const electric = f.energy === 'electric'
+              return (
+                <Fragment key={f.id}>
+                  {showLabel && (
+                    <tr className="month-row">
+                      <td colSpan={8}>
+                        {label}
+                        <span className="month-total">{fmtEur(monthTotals.get(label) ?? null)}</span>
+                      </td>
+                    </tr>
+                  )}
+                  <tr
+                    className="rowlink"
+                    onClick={() => {
+                      if (f.pending) {
+                        showToast('Ce plein sera modifiable après synchronisation', 'err')
+                        return
+                      }
+                      setEditingId(f.id)
+                    }}
+                  >
+                    <td className="admin-num">{fmtDateTime(f.filled_at)}</td>
+                    <td>{vehicleName(f.vehicle_id)}</td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>
+                      {f.is_draft ? '—' : electric ? fmtKwh(f.liters) : fmtLiters(f.liters)}
+                    </td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>
+                      {f.is_draft ? '—' : fmtEur(f.total_price)}
+                    </td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>
+                      {f.is_draft
+                        ? '—'
+                        : electric
+                          ? fmtPricePerKwh(f.price_per_liter)
+                          : fmtPricePerL(f.price_per_liter)}
+                    </td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>{fmtKm(f.odometer_km)}</td>
+                    <td className="admin-num" style={{ textAlign: 'right' }}>
+                      {conso
+                        ? electric
+                          ? fmtConsoElec(conso.per100)
+                          : fmtConso(conso.per100)
+                        : '—'}
+                    </td>
+                    <td>
+                      {electric && <span className="badge badge-elec">⚡ Recharge</span>}
+                      {f.is_draft && <span className="badge badge-draft">À compléter</span>}
+                      {f.pending && <span className="badge badge-pending">En attente</span>}
+                      {!f.is_full && !f.is_draft && (
+                        <span className="badge badge-partial">{electric ? 'Partielle' : 'Partiel'}</span>
+                      )}
+                    </td>
+                  </tr>
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="history-list">
       {fillups.map((f, i) => {
         const label = monthOf(f.filled_at)
         const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
@@ -413,6 +494,7 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
           </Fragment>
         )
       })}
+      </div>
 
       {editing && (
         <>
