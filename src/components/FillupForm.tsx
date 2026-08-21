@@ -3,7 +3,8 @@ import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import { fmtKm, fmtPricePerKwh, fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
-import { AttachIcon, BoltIcon, CameraIcon, PumpIcon, SaveIcon } from './icons'
+import { LAST_VEHICLE_KEY } from './QuickCapture'
+import { AttachIcon, BoltIcon, PumpIcon, SaveIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -13,8 +14,6 @@ interface Props {
   onSaved: (status: 'synced' | 'queued', draft: boolean) => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
-
-const LAST_VEHICLE_KEY = 'carnet:lastEntryVehicle'
 
 export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEmail, onSaved, showToast }: Props) {
   const [vehicleId, setVehicleId] = useState(() => {
@@ -38,7 +37,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
   const [showMore, setShowMore] = useState(false)
   const [errors, setErrors] = useState<{ liters?: string; price?: string }>({})
 
-  const quickInput = useRef<HTMLInputElement>(null)
   const attachInput = useRef<HTMLInputElement>(null)
   const litersInput = useRef<HTMLInputElement>(null)
   const priceInput = useRef<HTMLInputElement>(null)
@@ -84,41 +82,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
     setErrors({})
     setShowMore(false)
     if (attachInput.current) attachInput.current.value = ''
-    if (quickInput.current) quickInput.current.value = ''
-  }
-
-  /** Capture rapide : photo de la pompe ou de la borne → brouillon à compléter plus tard */
-  async function quickCapture(file: File) {
-    if (!vehicleId) {
-      showToast('Choisis d’abord un véhicule', 'err')
-      return
-    }
-    setBusy(true)
-    try {
-      const blob = await downscalePhoto(file)
-      const status = await saveFillup(
-        {
-          vehicle_id: vehicleId,
-          filled_at: new Date().toISOString(),
-          energy,
-          odometer_km: null,
-          liters: null,
-          total_price: null,
-          is_full: true,
-          is_draft: true,
-          notes: null,
-          created_by_email: userEmail,
-        },
-        blob,
-      )
-      localStorage.setItem(LAST_VEHICLE_KEY, vehicleId)
-      resetForm()
-      onSaved(status, true)
-    } catch {
-      showToast('Enregistrement impossible', 'err')
-    } finally {
-      setBusy(false)
-    }
   }
 
   async function submit(e: FormEvent) {
@@ -166,51 +129,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
 
   return (
     <>
-      {/* Capture rapide : le geste d'urgence à la pompe ou à la borne */}
-      <button
-        type="button"
-        className="btn-capture"
-        disabled={busy}
-        onClick={() => quickInput.current?.click()}
-      >
-        <span className="cam">
-          <CameraIcon size={28} />
-        </span>
-        <span className="txt">
-          Capture rapide
-          <small>
-            {electric
-              ? 'Photographie l’écran de la borne, encode plus tard'
-              : 'Photographie l’écran de la pompe, encode plus tard'}
-          </small>
-        </span>
-        <svg
-          className="chev"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M9 6l6 6-6 6" />
-        </svg>
-      </button>
-      <input
-        ref={quickInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) void quickCapture(f)
-        }}
-      />
-
       <form className="card" onSubmit={submit} noValidate>
         <h2>{electric ? 'Nouvelle recharge' : 'Nouveau plein'}</h2>
         {vehicles.length > 1 && (

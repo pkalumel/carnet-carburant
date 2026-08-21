@@ -6,11 +6,11 @@ import { checkIsAdmin } from './lib/adminDb'
 import { listOutbox } from './lib/outbox'
 import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
-import FillupForm from './components/FillupForm'
+import Home from './components/Home'
 import History from './components/History'
 import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
-import { GearIcon, HistoryIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
+import { GearIcon, HistoryIcon, HomeIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
 import { usePwaUpdate } from './lib/pwa'
 import { PULL_THRESHOLD, usePullToRefresh } from './lib/usePullToRefresh'
 
@@ -160,8 +160,8 @@ export default function App() {
             Carnet <em>Carburant</em>
           </span>
         </div>
-        {/* Le filtre est un concept de consultation : pas sur l'écran de saisie */}
-        {(tab === 'history' || tab === 'stats') && vehicles.length > 0 && (
+        {/* Le filtre cadre l'accueil et la consultation ; la saisie s'ouvre en feuille */}
+        {(tab === 'new' || tab === 'history' || tab === 'stats') && vehicles.length > 0 && (
           <div className="chips-wrap">
             <div className="chips" role="tablist" aria-label="Filtrer par véhicule">
               <button
@@ -216,27 +216,26 @@ export default function App() {
                 <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={() => void refresh()} showToast={showToast} />
               </>
             ) : (
-              <>
-                <FillupForm
-                  key={vehicleFilter} /* re-préremplit le véhicule quand le filtre change */
-                  vehicles={vehicles}
-                  fillups={fillups}
-                  defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
-                  userEmail={userEmail}
-                  showToast={showToast}
-                  onSaved={(status, draft) => {
-                    showToast(
-                      status === 'queued'
-                        ? 'Enregistré sur le téléphone — synchronisation dès que possible'
-                        : draft
-                          ? 'Photo enregistrée — à compléter dans l’historique'
-                          : 'Plein enregistré ✓',
-                    )
-                    if (draft) setTab('history')
-                    void refresh()
-                  }}
-                />
-              </>
+              <Home
+                vehicles={vehicles}
+                fillups={filtered}
+                allFillups={fillups}
+                vehicleFilter={vehicleFilter}
+                userEmail={userEmail}
+                showToast={showToast}
+                onOpenHistory={() => setTab('history')}
+                onSaved={(status, draft) => {
+                  showToast(
+                    status === 'queued'
+                      ? 'Enregistré sur le téléphone — synchronisation dès que possible'
+                      : draft
+                        ? 'Photo enregistrée — à compléter dans l’historique'
+                        : 'Plein enregistré ✓',
+                  )
+                  if (draft) setTab('history')
+                  void refresh()
+                }}
+              />
             )}
           </div>
         )}
@@ -278,7 +277,7 @@ export default function App() {
       <nav className="tabs">
         <div className="inner">
           <button className={tab === 'new' ? 'active' : ''} onClick={() => setTab('new')}>
-            <span className="ico"><PumpIcon /></span>Plein
+            <span className="ico"><HomeIcon /></span>Accueil
           </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             <span className="ico"><HistoryIcon /></span>Historique

@@ -5,7 +5,8 @@ import {
   fmtConso, fmtConsoElec, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters, fmtPricePerKwh,
   fmtPricePerL, parseDecimal, toLocalInputValue,
 } from '../lib/format'
-import { consumptionSeries, type ConsoPoint } from '../lib/stats'
+import { consumptionSeries, summarize, type ConsoPoint } from '../lib/stats'
+import { Meter } from './chartKit'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
 import { AttachIcon, BoltIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
@@ -302,16 +303,21 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
     return map
   }, [fillups])
 
-  // Total dépensé par mois affiché (liste éventuellement filtrée par véhicule)
-  const monthTotals = useMemo(() => {
-    const map = new Map<string, number>()
+  // Agrégats par mois affiché (liste éventuellement filtrée par véhicule)
+  const monthAgg = useMemo(() => {
+    const map = new Map<string, { total: number; n: number }>()
     for (const f of fillups) {
-      if (f.total_price == null) continue
       const label = monthOf(f.filled_at)
-      map.set(label, (map.get(label) ?? 0) + f.total_price)
+      const agg = map.get(label) ?? { total: 0, n: 0 }
+      if (f.total_price != null) agg.total += f.total_price
+      if (!f.is_draft) agg.n += 1
+      map.set(label, agg)
     }
     return map
   }, [fillups])
+
+  // Résumé de la liste affichée, pour le bandeau de tête
+  const summary = useMemo(() => summarize(fillups), [fillups])
 
   // La feuille ouverte fige le défilement de la page derrière
   useEffect(() => {
@@ -344,6 +350,24 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
           {drafts.length === 1 ? '1 plein à compléter' : `${drafts.length} pleins à compléter`} — ouvrir
         </button>
       )}
+
+      {/* Bandeau agrégé de la liste affichée */}
+      {summary.count > 0 && (
+        <section className="card history-band">
+          <div className="meter-row">
+            <Meter value={String(summary.count)} label={summary.count > 1 ? 'Pleins' : 'Plein'} />
+            <Meter value={fmtEur(summary.totalSpent)} label="Total dépensé" />
+            <Meter
+              value={
+                summary.avgPricePerLiter != null
+                  ? fmtPricePerL(summary.avgPricePerLiter)
+                  : fmtPricePerKwh(summary.avgPricePerKwh)
+              }
+              label="Prix moyen"
+            />
+          </div>
+        </section>
+      )}
       {/* Desktop : tableau d'abord (la liste ci-dessous reprend la main en mobile) */}
       <div className="history-table-wrap card" style={{ padding: '4px 12px 8px' }}>
         <table className="admin-table">
@@ -371,7 +395,12 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
                     <tr className="month-row">
                       <td colSpan={8}>
                         {label}
-                        <span className="month-total">{fmtEur(monthTotals.get(label) ?? null)}</span>
+                        <span className="month-sub">
+                          {(monthAgg.get(label)?.n ?? 0) > 1
+                            ? `${monthAgg.get(label)?.n} pleins`
+                            : '1 plein'}
+                        </span>
+                        <span className="month-total">{fmtEur(monthAgg.get(label)?.total ?? null)}</span>
                       </td>
                     </tr>
                   )}
@@ -435,7 +464,10 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
             {showLabel && (
               <div className="month-label">
                 {label}
-                <span className="month-total">{fmtEur(monthTotals.get(label) ?? null)}</span>
+                <span className="month-sub">
+                  {(monthAgg.get(label)?.n ?? 0) > 1 ? `${monthAgg.get(label)?.n} pleins` : '1 plein'}
+                </span>
+                <span className="month-total">{fmtEur(monthAgg.get(label)?.total ?? null)}</span>
               </div>
             )}
             <button

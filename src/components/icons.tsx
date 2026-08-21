@@ -21,6 +21,14 @@ export function PumpIcon({ size = 22 }: IconProps) {
   )
 }
 
+export function HomeIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>
+      <path d="M4 10.5L12 3.5l8 7V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z" />
+    </svg>
+  )
+}
+
 export function BoltIcon({ size = 22 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>

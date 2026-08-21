@@ -514,6 +514,31 @@ button { font-family: var(--sans); cursor: pointer; }
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
+/* Détail du mois (« 3 pleins ») : reste collé au libellé, le total part à droite */
+.month-sub {
+  margin-left: 8px;
+  margin-right: auto;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-64);
+}
+.admin-table .month-row .month-sub { margin-right: 0; }
+
+/* Bandeau agrégé de l'historique : chiffres un cran plus discrets que le hero */
+.history-band .meter-big { font-size: 22px; }
+
+/* Tendance du prix unitaire vs le plein précédent (accueil) */
+.trend {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trend.up { color: var(--danger); }
+.trend.down { color: var(--ok); }
 
 .fillup-item {
   display: flex;
