@@ -1003,6 +1003,9 @@ nav.tabs button.active {
   white-space: nowrap;
 }
 
+/* Fiche utilisateur en sheet : les cartes empilées gardent leur respiration */
+.sheet > .card { margin-top: 16px; }
+
 .admin-health-row {
   display: flex;
   justify-content: space-between;
