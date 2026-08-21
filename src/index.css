@@ -879,6 +879,34 @@ nav.tabs button.active {
 .row-actions { display: flex; gap: 8px; margin-top: 12px; }
 .row-actions .btn-ghost { flex: 1; }
 
+/* ---------- Tirer pour actualiser ---------- */
+/* Le geste maison remplace celui du navigateur (désactivé ci-dessous) :
+   pastille qui descend avec le doigt, flèche qui bascule au seuil,
+   puis rotation pendant l'actualisation. */
+html, body { overscroll-behavior-y: none; }
+
+.ptr {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  z-index: 25;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-float);
+  display: grid;
+  place-items: center;
+  color: var(--ink-64);
+  pointer-events: none;
+}
+.ptr.armed { color: var(--accent-press); }
+.ptr-spin { animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- Gabarits desktop ---------- */
 /* Au-delà de 980 px la racine s'élargit pour tous les écrans ; chaque écran
    décide de l'usage de la largeur : grille de cartes (Stats, Réglages),

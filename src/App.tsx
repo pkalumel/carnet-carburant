@@ -12,6 +12,7 @@ import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
 import { GearIcon, HistoryIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
 import { usePwaUpdate } from './lib/pwa'
+import { PULL_THRESHOLD, usePullToRefresh } from './lib/usePullToRefresh'
 
 const Stats = lazy(() => import('./components/Stats'))
 const Admin = lazy(() => import('./components/Admin'))
@@ -94,6 +95,24 @@ export default function App() {
     void checkIsAdmin().then(setIsAdmin)
   }, [session])
 
+  // Tirer la page vers le bas : resynchronise et recharge tout depuis le
+  // serveur, et vérifie au passage si une nouvelle version de l'app existe
+  // (la bannière « Mettre à jour » apparaît alors).
+  const [reloadTick, setReloadTick] = useState(0)
+  const pullRefresh = useCallback(async () => {
+    if (!navigator.onLine) {
+      showToast('Hors ligne — impossible d’actualiser', 'err')
+      return
+    }
+    void navigator.serviceWorker?.getRegistration().then((r) => r?.update())
+    const n = await flushOutbox()
+    await refresh()
+    void checkIsAdmin().then(setIsAdmin)
+    setReloadTick((t) => t + 1)
+    showToast(n > 0 ? `À jour — ${n === 1 ? '1 plein synchronisé' : `${n} pleins synchronisés`} ✓` : 'À jour ✓')
+  }, [refresh, showToast])
+  const { pull, refreshing } = usePullToRefresh(pullRefresh)
+
   if (session === undefined) return null
   if (!session) return <AuthScreen />
 
@@ -103,6 +122,35 @@ export default function App() {
 
   return (
     <>
+      <div
+        className={`ptr${pull >= PULL_THRESHOLD || refreshing ? ' armed' : ''}`}
+        style={{
+          transform: `translate(-50%, ${(refreshing ? 64 : pull) - 56}px)`,
+          transition: pull > 0 ? 'none' : 'transform 0.2s ease',
+        }}
+        aria-hidden
+      >
+        {refreshing ? (
+          <svg className="ptr-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 3a9 9 0 1 1-8.2 5.3" />
+          </svg>
+        ) : (
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transform: `rotate(${Math.min(pull * 3, 180)}deg)`, transition: 'transform 0.1s linear' }}
+          >
+            <path d="M12 5v14M5 12l7 7 7-7" />
+          </svg>
+        )}
+      </div>
+
       <header className="topbar">
         <div className="brand-row">
           <span className="brand">
@@ -221,7 +269,8 @@ export default function App() {
 
         {tab === 'admin' && isAdmin && (
           <Suspense fallback={<div className="card empty">Chargement…</div>}>
-            <Admin showToast={showToast} />
+            {/* key : le tirer-pour-actualiser remonte la console et refait ses requêtes */}
+            <Admin key={reloadTick} showToast={showToast} />
           </Suspense>
         )}
       </main>
