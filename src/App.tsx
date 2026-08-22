@@ -126,7 +126,9 @@ export default function App() {
     await refresh()
     void checkIsAdmin().then(setIsAdmin)
     setReloadTick((t) => t + 1)
-    showToast(n > 0 ? `À jour — ${n === 1 ? '1 plein synchronisé' : `${n} pleins synchronisés`} ✓` : 'À jour ✓')
+    // Pas de toast « À jour » : la pastille suffit ; on ne signale que
+    // la synchronisation effective de pleins en attente.
+    if (n > 0) showToast(n === 1 ? '1 plein synchronisé ✓' : `${n} pleins synchronisés ✓`)
   }, [refresh, showToast])
   const { pull, refreshing } = usePullToRefresh(pullRefresh)
 
