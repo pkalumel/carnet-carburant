@@ -6,6 +6,7 @@ import { PencilIcon, PlusIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 interface Props {
   vehicles: Vehicle[]
   fillups: Fillup[]
+  userId: string
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
@@ -149,7 +150,7 @@ function Editor({
   )
 }
 
-export default function VehicleManager({ vehicles, fillups, onChanged, showToast }: Props) {
+export default function VehicleManager({ vehicles, fillups, userId, onChanged, showToast }: Props) {
   const [name, setName] = useState('')
   const [plate, setPlate] = useState('')
   const [fuel, setFuel] = useState<string | null>(null)
@@ -181,6 +182,7 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
       <h2>Véhicules</h2>
       {vehicles.map((v) => {
         const n = countFor(v.id)
+        const mine = v.user_id === userId
         return editingId === v.id ? (
           <Editor
             key={v.id}
@@ -197,16 +199,22 @@ export default function VehicleManager({ vehicles, fillups, onChanged, showToast
         ) : (
           <div key={v.id} className="fillup-item">
             <div className="body">
-              <div className="nums">{v.name}</div>
+              <div className="nums">
+                {v.name}
+                {!mine && <span className="badge badge-partial">Partagé avec moi</span>}
+              </div>
               <div className="sub">
                 {v.plate ? `${v.plate} · ` : ''}
                 {v.fuel ? `${v.fuel} · ` : ''}
                 {n === 0 ? 'aucun plein' : n === 1 ? '1 plein' : `${n} pleins`}
               </div>
             </div>
-            <button className="btn-icon" aria-label={`Modifier ${v.name}`} onClick={() => setEditingId(v.id)}>
-              <PencilIcon />
-            </button>
+            {/* Seul le propriétaire modifie son véhicule (le serveur le garantit aussi) */}
+            {mine && (
+              <button className="btn-icon" aria-label={`Modifier ${v.name}`} onClick={() => setEditingId(v.id)}>
+                <PencilIcon />
+              </button>
+            )}
           </div>
         )
       })}

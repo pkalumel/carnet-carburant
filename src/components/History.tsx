@@ -15,6 +15,7 @@ interface Props {
   /** Liste complète, non filtrée : sert aux validations inter-véhicules */
   allFillups: Fillup[]
   vehicles: Vehicle[]
+  userId: string
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
@@ -287,10 +288,19 @@ function Editor({
 const monthOf = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
-export default function History({ fillups, allFillups, vehicles, onChanged, showToast }: Props) {
+export default function History({ fillups, allFillups, vehicles, userId, onChanged, showToast }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '?'
-  const drafts = fillups.filter((f) => f.is_draft)
+
+  // Éditable = plein d'un de MES véhicules, ou saisie dont je suis
+  // l'auteur sur un véhicule partagé (le serveur applique la même règle)
+  const myVehicles = useMemo(
+    () => new Set(vehicles.filter((v) => v.user_id === userId).map((v) => v.id)),
+    [vehicles, userId],
+  )
+  const canEdit = (f: Fillup) => myVehicles.has(f.vehicle_id) || f.created_by === userId
+
+  const drafts = fillups.filter((f) => f.is_draft && canEdit(f))
   const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
 
   // Distance et conso de chaque plein (période close par ce plein), par véhicule et par énergie
@@ -418,6 +428,10 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
                         showToast('Ce plein sera modifiable après synchronisation', 'err')
                         return
                       }
+                      if (!canEdit(f)) {
+                        showToast('Seul l’auteur ou le propriétaire peut modifier cette saisie', 'err')
+                        return
+                      }
                       setEditingId(f.id)
                     }}
                   >
@@ -482,6 +496,10 @@ export default function History({ fillups, allFillups, vehicles, onChanged, show
               onClick={() => {
                 if (f.pending) {
                   showToast('Ce plein sera modifiable après synchronisation', 'err')
+                  return
+                }
+                if (!canEdit(f)) {
+                  showToast('Seul l’auteur ou le propriétaire peut modifier cette saisie', 'err')
                   return
                 }
                 setEditingId(f.id)
