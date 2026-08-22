@@ -103,7 +103,7 @@ export default function Home({
         showToast={showToast}
       />
 
-      <section className="card hero">
+      <section className="card">
         <h2>Ce mois-ci</h2>
         <div className="meter-lead-row">
           <div className="meter-big lead">

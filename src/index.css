@@ -212,6 +212,8 @@ main.content {
 .card.hero .meter-big { color: #fff; }
 .card.hero .meter-unit, .card.hero .meter-label { color: rgba(255, 255, 255, 0.6); }
 .card.hero .meter-big.lead { font-size: 40px; color: var(--accent); }
+/* Variante claire du chiffre héros (accueil) : accent foncé, lisible sur blanc */
+.card:not(.hero) .meter-big.lead { font-size: 40px; color: var(--accent-press); }
 .card.hero .hero-note {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
@@ -422,9 +424,9 @@ button { font-family: var(--sans); cursor: pointer; }
 
 /* Capture rapide : LE geste de l'app, carte héros tactile */
 .btn-capture {
-  background: var(--ink);
-  color: #fff;
-  border: none;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   width: 100%;
   padding: 20px;
@@ -432,7 +434,7 @@ button { font-family: var(--sans); cursor: pointer; }
   align-items: center;
   gap: 16px;
   text-align: left;
-  box-shadow: var(--shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-card);
   transition: transform 0.12s ease;
 }
 .btn-capture:active { transform: scale(0.98); }
@@ -457,10 +459,10 @@ button { font-family: var(--sans); cursor: pointer; }
   font-weight: 500;
   font-size: 13px;
   letter-spacing: 0;
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--ink-64);
   margin-top: 2px;
 }
-.btn-capture .chev { color: rgba(255, 255, 255, 0.4); flex-shrink: 0; }
+.btn-capture .chev { color: var(--ink-64); flex-shrink: 0; }
 
 .btn-ghost {
   background: none;
