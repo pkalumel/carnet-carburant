@@ -2,11 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Fillup, Vehicle } from '../lib/types'
 import VehicleManager from './VehicleManager'
+import ShareManager from './ShareManager'
 import { DownloadIcon, KeyIcon, LogoutIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
   fillups: Fillup[]
+  userId: string
   userEmail: string | null
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
@@ -40,7 +42,7 @@ function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
   return '﻿' + rows.join('\r\n')
 }
 
-export default function Settings({ vehicles, fillups, userEmail, onChanged, showToast }: Props) {
+export default function Settings({ vehicles, fillups, userId, userEmail, onChanged, showToast }: Props) {
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const realCount = fillups.filter((f) => !f.is_draft).length
@@ -76,7 +78,7 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
 
   return (
     <div className="settings-grid">
-      <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={onChanged} showToast={showToast} />
+      <VehicleManager vehicles={vehicles} fillups={fillups} userId={userId} onChanged={onChanged} showToast={showToast} />
 
       <div className="settings-aside">
       <section className="card">
@@ -93,6 +95,14 @@ export default function Settings({ vehicles, fillups, userEmail, onChanged, show
           <DownloadIcon /> Exporter tous les pleins en CSV
         </button>
       </section>
+
+      <ShareManager
+        vehicles={vehicles}
+        userId={userId}
+        userEmail={userEmail}
+        showToast={showToast}
+        onChanged={onChanged}
+      />
 
       <section className="card">
         <h2>Compte</h2>
