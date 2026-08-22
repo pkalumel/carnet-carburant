@@ -242,10 +242,17 @@ function Editor({
         <span className="lbl">Date et heure</span>
         <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />
       </label>
-      <label className="check">
-        <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
-        {electric ? 'Charge complète (batterie à 100 %)' : 'Plein complet (rempli à ras bord)'}
-      </label>
+      <div className="field">
+        <span className="lbl">{electric ? 'Charge' : 'Plein'}</span>
+        <div className="seg">
+          <button type="button" className={isFull ? 'active' : ''} onClick={() => setIsFull(true)}>
+            {electric ? 'Charge complète' : 'Plein complet'}
+          </button>
+          <button type="button" className={!isFull ? 'active' : ''} onClick={() => setIsFull(false)}>
+            {electric ? 'Partielle' : 'Partiel'}
+          </button>
+        </div>
+      </div>
       <label className="field">
         <span className="lbl">Notes</span>
         <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} />

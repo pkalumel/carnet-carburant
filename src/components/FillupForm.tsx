@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import { fmtKm, fmtPricePerKwh, fmtPricePerL, parseDecimal, toLocalInputValue } from '../lib/format'
@@ -71,12 +71,26 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
       ? `Doit dépasser ${fmtKm(lastOdo)} (dernier plein)`
       : null
 
+  // Le dernier choix complet/partiel est mémorisé par énergie : le plein
+  // est presque toujours complet, la recharge souvent partielle.
+  const storedFull = (en: Energy) => {
+    const s = localStorage.getItem(`carnet:isFull:${en}`)
+    return s == null ? true : s === '1'
+  }
+  useEffect(() => {
+    setIsFull(storedFull(energy))
+  }, [energy])
+  function chooseFull(v: boolean) {
+    setIsFull(v)
+    localStorage.setItem(`carnet:isFull:${energy}`, v ? '1' : '0')
+  }
+
   function resetForm() {
     setDateStr(toLocalInputValue(new Date()))
     setOdo('')
     setLiters('')
     setPrice('')
-    setIsFull(true)
+    setIsFull(storedFull(energy))
     setNotes('')
     setPhoto(null)
     setErrors({})
@@ -234,6 +248,25 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
           </div>
         </div>
 
+        <div className="field">
+          <span className="lbl">{electric ? 'Charge' : 'Plein'}</span>
+          <div className="seg">
+            <button type="button" className={isFull ? 'active' : ''} onClick={() => chooseFull(true)}>
+              {electric ? 'Charge complète' : 'Plein complet'}
+            </button>
+            <button type="button" className={!isFull ? 'active' : ''} onClick={() => chooseFull(false)}>
+              {electric ? 'Partielle' : 'Partiel'}
+            </button>
+          </div>
+          {!isFull && (
+            <span className="field-hint">
+              {electric
+                ? 'La consommation se calculera à la prochaine charge complète.'
+                : 'La consommation se calculera au prochain plein complet.'}
+            </span>
+          )}
+        </div>
+
         <button
           type="button"
           className={showMore ? 'btn-more open' : 'btn-more'}
@@ -261,10 +294,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
             <label className="field">
               <span className="lbl">Date et heure</span>
               <input type="datetime-local" value={dateStr} onChange={(e) => setDateStr(e.target.value)} required />
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
-              {electric ? 'Charge complète (batterie à 100 %)' : 'Plein complet (rempli à ras bord)'}
             </label>
             <label className="field">
               <span className="lbl">Notes (optionnel)</span>
