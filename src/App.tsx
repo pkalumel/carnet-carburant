@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
+import { emailLinkType, supabase } from './lib/supabase'
 import { flushOutbox, loadFillups, loadVehicles } from './lib/db'
 import { checkIsAdmin } from './lib/adminDb'
 import { claimShares } from './lib/sharesDb'
 import { listOutbox } from './lib/outbox'
 import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
+import SetPasswordScreen from './components/SetPasswordScreen'
 import Home from './components/Home'
 import History from './components/History'
 import Settings from './components/Settings'
@@ -34,6 +35,11 @@ export default function App() {
   )
   const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // Arrivée par lien d'invitation ou de récupération : le mot de passe se
+  // définit avant d'entrer dans l'app.
+  const [needsPassword, setNeedsPassword] = useState(
+    () => emailLinkType === 'invite' || emailLinkType === 'recovery',
+  )
   const update = usePwaUpdate()
 
   const showToast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
@@ -126,6 +132,19 @@ export default function App() {
 
   if (session === undefined) return null
   if (!session) return <AuthScreen />
+  if (needsPassword) {
+    return (
+      <>
+        <SetPasswordScreen
+          userEmail={session.user.email ?? null}
+          invited={emailLinkType === 'invite'}
+          onDone={() => setNeedsPassword(false)}
+          showToast={showToast}
+        />
+        {toast && <div className={`toast ${toast.kind}`}>{toast.msg}</div>}
+      </>
+    )
+  }
 
   const filtered =
     vehicleFilter === 'all' ? fillups : fillups.filter((f) => f.vehicle_id === vehicleFilter)

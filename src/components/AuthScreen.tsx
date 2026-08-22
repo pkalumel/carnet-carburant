@@ -46,7 +46,7 @@ export default function AuthScreen() {
         redirectTo: window.location.origin,
       })
       if (error) throw error
-      setInfo('Email envoyé — ouvre le lien reçu, puis change le mot de passe dans Réglages.')
+      setInfo('Email envoyé — ouvre le lien reçu pour définir un nouveau mot de passe.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Envoi impossible.')
     } finally {
