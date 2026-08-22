@@ -839,7 +839,8 @@ nav.tabs button.active {
   box-shadow: var(--shadow-float);
   max-width: 90vw;
 }
-.toast.ok { border-left: 4px solid var(--accent); }
+/* Pas de liseré jaune sur les confirmations : pilule encre sobre ;
+   seule l'erreur garde son repère rouge. */
 .toast.err { border-left: 4px solid var(--danger); }
 
 .photo-full {
