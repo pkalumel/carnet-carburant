@@ -65,7 +65,15 @@ export default function ShareManager({ vehicles, userId, userEmail, showToast, o
     setBusy(true)
     try {
       const result = await inviteGuest(addr, selected)
-      showToast(result.user_exists ? 'Partage activé ✓' : 'Invitation envoyée ✓')
+      if (result.user_exists) {
+        showToast('Partage activé ✓')
+      } else if (result.email_sent) {
+        showToast('Invitation envoyée ✓')
+      } else {
+        // Le partage est créé mais l'e-mail n'est pas parti : ré-inviter
+        // plus tard renverra l'e-mail (l'invitation est idempotente).
+        showToast('Partage créé, mais l’e-mail n’a pas pu partir — réessaie plus tard', 'err')
+      }
       setEmail('')
       setSelected([])
       void load()
