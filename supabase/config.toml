@@ -1,0 +1,14 @@
+# Configuration distante poussée via `npx supabase config push`.
+# Attention : la CLI applique les DÉFAUTS pour toute clé auth absente —
+# les valeurs ci-dessous figent l'état voulu du projet.
+project_id = "imvmnpkhczcgpnpivgwk"
+
+[auth]
+site_url = "https://carnet-carburant.vercel.app"
+additional_redirect_urls = ["https://carnet-carburant.vercel.app", "http://localhost:5173"]
+otp_length = 8
+max_frequency = "1m0s"
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
