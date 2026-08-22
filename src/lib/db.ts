@@ -68,6 +68,7 @@ function pendingToFillup(p: PendingFillup): Fillup {
     ...input,
     price_per_liter: ppl,
     photo_path: null,
+    created_by: null, // renseigné par le serveur à la synchronisation
     created_at: input.filled_at,
     pending: true,
   }

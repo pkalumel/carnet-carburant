@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { flushOutbox, loadFillups, loadVehicles } from './lib/db'
 import { checkIsAdmin } from './lib/adminDb'
+import { claimShares } from './lib/sharesDb'
 import { listOutbox } from './lib/outbox'
 import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
@@ -95,6 +96,16 @@ export default function App() {
     void checkIsAdmin().then(setIsAdmin)
   }, [session])
 
+  // Rattache les invitations de partage en attente portant mon adresse
+  // (inscription via le lien d'invitation OU inscription normale), puis
+  // recharge si des partages viennent d'être récupérés.
+  useEffect(() => {
+    if (!session) return
+    void claimShares().then((n) => {
+      if (n > 0) void refresh()
+    })
+  }, [session, refresh])
+
   // Tirer la page vers le bas : resynchronise et recharge tout depuis le
   // serveur, et vérifie au passage si une nouvelle version de l'app existe
   // (la bannière « Mettre à jour » apparaît alors).
@@ -119,6 +130,7 @@ export default function App() {
   const filtered =
     vehicleFilter === 'all' ? fillups : fillups.filter((f) => f.vehicle_id === vehicleFilter)
   const userEmail = session.user.email ?? null
+  const userId = session.user.id
 
   return (
     <>
@@ -213,7 +225,7 @@ export default function App() {
                   <div className="empty-title">Bienvenue !</div>
                   Commence par ajouter le premier véhicule de la famille juste en dessous.
                 </div>
-                <VehicleManager vehicles={vehicles} fillups={fillups} onChanged={() => void refresh()} showToast={showToast} />
+                <VehicleManager vehicles={vehicles} fillups={fillups} userId={userId} onChanged={() => void refresh()} showToast={showToast} />
               </>
             ) : (
               <Home
@@ -245,6 +257,7 @@ export default function App() {
             fillups={filtered}
             allFillups={fillups}
             vehicles={vehicles}
+            userId={userId}
             onChanged={() => void refresh()}
             showToast={showToast}
           />
@@ -260,6 +273,7 @@ export default function App() {
           <Settings
             vehicles={vehicles}
             fillups={fillups}
+            userId={userId}
             userEmail={userEmail}
             onChanged={() => void refresh()}
             showToast={showToast}

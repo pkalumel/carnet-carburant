@@ -1,8 +1,21 @@
 export interface Vehicle {
   id: string
+  /** propriétaire du véhicule (≠ moi pour un véhicule partagé avec moi) */
+  user_id: string
   name: string
   plate: string | null
   fuel: string | null
+  created_at: string
+}
+
+/** Partage d'un véhicule avec un invité ; guest_id null = invitation en attente */
+export interface VehicleShare {
+  id: string
+  vehicle_id: string
+  owner_id: string
+  owner_email: string
+  guest_email: string
+  guest_id: string | null
   created_at: string
 }
 
@@ -34,6 +47,7 @@ export interface Fillup {
   is_draft: boolean
   photo_path: string | null
   notes: string | null
+  created_by: string | null
   created_by_email: string | null
   created_at: string
   /** vrai si le plein attend d'être synchronisé vers le serveur */
