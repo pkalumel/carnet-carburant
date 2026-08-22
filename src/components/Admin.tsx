@@ -199,25 +199,32 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
   }
 
   return (
-    <>
-      <div className="sheet-backdrop" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="Fiche utilisateur">
-        <div className="sheet-handle" aria-hidden />
-        {!detail ? (
-          <div className="card empty">Chargement…</div>
-        ) : (
-          <>
-            <h2>
-              {detail.user.email}
-              {detail.user.is_admin && <span className="badge badge-draft">Admin</span>}
-              {banned && <span className="badge badge-pending">Banni</span>}
-            </h2>
-            <div className="settings-note">
+    <div className="page-modal" role="dialog" aria-modal="true" aria-label="Fiche utilisateur">
+      <header className="page-modal-top">
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow">Fiche utilisateur</div>
+          <div className="title">
+            {detail ? detail.user.email : '…'}
+            {detail?.user.is_admin && <span className="badge badge-draft">Admin</span>}
+            {banned && <span className="badge badge-pending">Banni</span>}
+          </div>
+          {detail && (
+            <div className="subtitle">
               Inscrit le {fmtDate(detail.user.created_at)} · dernière connexion{' '}
               {ago(detail.user.last_sign_in_at)} · {nf0.format(detail.photo_count)}{' '}
               {detail.photo_count > 1 ? 'photos' : 'photo'} ({fmtBytes(detail.photo_bytes)})
             </div>
-
+          )}
+        </div>
+        <button className="page-modal-close" onClick={onClose} aria-label="Fermer la fiche">
+          <XIcon size={20} />
+        </button>
+      </header>
+      <div className="page-modal-body">
+        {!detail ? (
+          <div className="card empty">Chargement…</div>
+        ) : (
+          <>
             <section className="card">
               <h2>Véhicules ({detail.vehicles.length})</h2>
               {detail.vehicles.length === 0 && (
@@ -315,15 +322,10 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
               </section>
             )}
 
-            <div className="row-actions">
-              <button className="btn-ghost" onClick={onClose}>
-                <XIcon /> Fermer
-              </button>
-            </div>
           </>
         )}
       </div>
-    </>
+    </div>
   )
 }
 
