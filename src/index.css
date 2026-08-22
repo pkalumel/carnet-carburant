@@ -901,8 +901,10 @@ nav.tabs button.active {
   margin: 8px 0 0;
 }
 
-.row-actions { display: flex; gap: 8px; margin-top: 12px; }
-.row-actions .btn-ghost { flex: 1; }
+/* Les boutons se partagent la ligne, et passent à la ligne plutôt que de
+   déborder quand leur libellé ne tient pas (petits écrans) */
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.row-actions .btn-ghost { flex: 1 1 auto; min-width: 0; }
 
 /* ---------- Tirer pour actualiser ---------- */
 /* Le geste maison remplace celui du navigateur (désactivé ci-dessous) :
