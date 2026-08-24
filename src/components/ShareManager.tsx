@@ -174,10 +174,10 @@ export default function ShareManager({ vehicles, userId, userEmail, showToast, o
                         {vehicleName(s.vehicle_id)}
                         <button
                           type="button"
+                          className="badge-x"
                           aria-label={`Retirer ${vehicleName(s.vehicle_id)} pour ${guestEmail}`}
                           disabled={busy}
                           onClick={() => void remove(s.id, false)}
-                          style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', display: 'grid' }}
                         >
                           <XIcon size={13} />
                         </button>

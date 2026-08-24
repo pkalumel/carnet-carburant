@@ -17,6 +17,8 @@
   --ink-08: rgba(22, 32, 43, 0.08);
   --accent: #f0b429;
   --accent-press: #dd9f0e;
+  /* jaune assombri réservé au texte sur fond clair (AA large ≥ 3:1) */
+  --accent-text: #a97b08;
   --accent-soft: rgba(240, 180, 41, 0.16);
   --on-accent: #16202b;
   --ok: #2e7d5b;
@@ -78,8 +80,9 @@
     --ink-08: rgba(239, 233, 220, 0.08);
     --accent: #d99e1f;
     --accent-press: #c08a15;
+    --accent-text: #e3ac35;
     --accent-soft: rgba(217, 158, 31, 0.18);
-    --ok: #4a9d77;
+    --ok: #63bd92;
     --ok-soft: rgba(74, 157, 119, 0.2);
     --danger: #cf6a56;
     --danger-soft: rgba(207, 106, 86, 0.14);
@@ -121,8 +124,9 @@
   --ink-08: rgba(239, 233, 220, 0.08);
   --accent: #d99e1f;
   --accent-press: #c08a15;
+  --accent-text: #e3ac35;
   --accent-soft: rgba(217, 158, 31, 0.18);
-  --ok: #4a9d77;
+  --ok: #63bd92;
   --ok-soft: rgba(74, 157, 119, 0.2);
   --danger: #cf6a56;
   --danger-soft: rgba(207, 106, 86, 0.14);
@@ -344,7 +348,7 @@ main.content {
 .card.hero .meter-unit, .card.hero .meter-label { color: var(--on-ink-60); }
 .card.hero .meter-big.lead { font-size: 48px; color: var(--accent); }
 /* Variante claire du chiffre héros (accueil) : accent foncé, lisible sur blanc */
-.card:not(.hero) .meter-big.lead { font-size: 48px; color: var(--accent-press); }
+.card:not(.hero) .meter-big.lead { font-size: 48px; color: var(--accent-text); }
 .card.hero .hero-note {
   font-size: 13px;
   color: var(--on-ink-70);
@@ -817,6 +821,20 @@ nav.tabs .inner > button:not(.tab-plus):active,
 .badge-partial { background: var(--ink-08); color: var(--ink-80); }
 .badge-pending { background: var(--ink-08); color: var(--ink-80); border: 1px dashed var(--ink-64); }
 .badge-elec { background: var(--ok-soft); color: var(--ok); }
+/* Croix de retrait dans un badge (partage) : cible élargie à 28 px —
+   exception documentée à la règle 44 px (cible en ligne, WCAG 2.5.8) */
+.badge-x {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  margin: -8px -6px -8px -2px;
+  cursor: pointer;
+}
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .badge-accent { background: var(--accent-soft); color: var(--accent-press); }
 
@@ -846,7 +864,7 @@ nav.tabs button {
   background: none;
   border: none;
   border-radius: 18px;
-  color: var(--on-ink-55);
+  color: var(--on-ink-70);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;

@@ -29,3 +29,4 @@ dist-ssr
 !.env.example
 supabase/.temp/
 example.zip
+scripts/verify-ux-report/
