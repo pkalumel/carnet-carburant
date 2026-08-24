@@ -133,11 +133,14 @@ export default function Home({
           {summary.avgConso == null && summary.avgConsoElec != null && (
             <Meter value={num(summary.avgConsoElec, 1)} unit="kWh/100" label="Conso moyenne" />
           )}
-          <Meter
-            value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)}
-            unit="c€/km"
-            label="Coût au km"
-          />
+          {summary.costPerKm != null && (
+            <Meter value={num(summary.costPerKm * 100, 1)} unit="c€/km" label="Coût au km" />
+          )}
+          {summary.avgConso == null && summary.avgConsoElec == null && summary.costPerKm == null && (
+            <span className="meter-encourage">
+              Encore 1 plein complet et ta conso apparaît.
+            </span>
+          )}
         </div>
       </section>
 

@@ -337,9 +337,9 @@ main.content {
 .card.hero h2 { color: var(--on-ink-60); }
 .card.hero .meter-big { color: var(--on-ink); }
 .card.hero .meter-unit, .card.hero .meter-label { color: var(--on-ink-60); }
-.card.hero .meter-big.lead { font-size: 40px; color: var(--accent); }
+.card.hero .meter-big.lead { font-size: 48px; color: var(--accent); }
 /* Variante claire du chiffre héros (accueil) : accent foncé, lisible sur blanc */
-.card:not(.hero) .meter-big.lead { font-size: 40px; color: var(--accent-press); }
+.card:not(.hero) .meter-big.lead { font-size: 48px; color: var(--accent-press); }
 .card.hero .hero-note {
   font-size: 13px;
   color: var(--on-ink-70);
@@ -381,6 +381,12 @@ main.content {
   gap: 16px;
 }
 .meter-lead-row { margin-bottom: 24px; }
+/* Données encore insuffisantes : encourager plutôt qu'afficher des tirets */
+.meter-encourage {
+  font-size: 13px;
+  color: var(--ink-64);
+  align-self: center;
+}
 
 /* ---------- Formulaires ---------- */
 label.field, div.field {
@@ -541,7 +547,18 @@ button { font-family: var(--sans); cursor: pointer; }
   transition: background 0.15s ease;
 }
 .btn-icon:active { background: var(--ink-08); }
-.btn:active { transform: scale(0.98); }
+.btn:active { transform: scale(0.97); }
+/* Retour tactile unifié : press à 97 % sur les commandes courantes */
+.chip:active,
+.seg button:active,
+.btn-icon:active,
+nav.tabs .inner > button:not(.tab-plus):active,
+.history-list .fillup-item:active { transform: scale(0.97); transition: transform 0.15s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .btn:active, .chip:active, .seg button:active, .btn-icon:active,
+  nav.tabs .inner > button:not(.tab-plus):active,
+  .history-list .fillup-item:active { transform: none; }
+}
 .btn-primary {
   background: var(--hero-bg);
   color: var(--on-ink);
@@ -772,6 +789,13 @@ button { font-family: var(--sans); cursor: pointer; }
 
 /* Filtres rapides d'énergie de l'historique */
 .history-filter { margin-bottom: 4px; }
+
+/* Note affichée à la place d'un graphe trop épars (< 3 points) */
+.chart-note {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: var(--ink-64);
+}
 
 .badge {
   display: inline-block;

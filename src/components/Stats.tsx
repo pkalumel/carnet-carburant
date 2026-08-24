@@ -26,6 +26,10 @@ const monthLabel = (m: string) =>
 const dayLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 
+const SPARSE_NOTE = (
+  <p className="chart-note">Encore quelques pleins et la courbe s’anime.</p>
+)
+
 export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
   const [period, setPeriod] = useState<Period>('12m')
 
@@ -132,6 +136,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
             <span className="kpi-val">{num(summary.avgConso, 1)}</span>
             <span className="kpi-sub">L/100 km · moyenne mobile en jaune</span>
           </div>
+          {conso.length < 3 ? SPARSE_NOTE : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={conso} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -142,6 +147,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <Line isAnimationActive={false} type="monotone" dataKey="ma" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={false} />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </section>
       )}
 
@@ -152,6 +158,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
             <span className="kpi-val">{num(summary.totalSpent, 0)}</span>
             <span className="kpi-sub">€ sur la période</span>
           </div>
+          {months.length < 3 ? SPARSE_NOTE : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={months} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -171,6 +178,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               ))}
             </BarChart>
           </ResponsiveContainer>
+          )}
           {!singleVehicle && stackedVehicles.length > 1 && (
             <div className="legend">
               {stackedVehicles.map((v) => (
@@ -191,6 +199,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
             <span className="kpi-val">{num(summary.avgPricePerLiter, 3)}</span>
             <span className="kpi-sub">€/L en moyenne</span>
           </div>
+          {prices.length < 3 ? SPARSE_NOTE : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={prices} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -200,6 +209,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </section>
       )}
 
@@ -213,17 +223,19 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
           <div className="meter-label">Total dépensé</div>
         </div>
         <div className="meter-row">
-          {(hasFuel || !hasElec) && (
+          {summary.avgConso != null && (
             <Meter value={num(summary.avgConso, 1)} unit="L/100" label={hasElec ? 'Conso carburant' : 'Conso moyenne'} />
           )}
-          {hasElec && (
+          {summary.avgConsoElec != null && (
             <Meter value={num(summary.avgConsoElec, 1)} unit="kWh/100" label={hasFuel ? 'Conso élec' : 'Conso moyenne'} />
           )}
-          <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
-          {(hasFuel || !hasElec) && (
+          {summary.costPerKm != null && (
+            <Meter value={num(summary.costPerKm * 100, 1)} unit="c€/km" label="Coût au km" />
+          )}
+          {summary.avgPricePerLiter != null && (
             <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label={hasElec ? 'Prix du litre' : 'Prix moyen'} />
           )}
-          {hasElec && (
+          {summary.avgPricePerKwh != null && (
             <Meter value={num(summary.avgPricePerKwh, 3)} unit="€/kWh" label={hasFuel ? 'Prix du kWh' : 'Prix moyen'} />
           )}
         </div>
@@ -238,6 +250,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
       {singleVehicle && consoElec.length > 0 && (
         <section className="card">
           <h2>Consommation électrique (kWh/100 km)</h2>
+          {consoElec.length < 3 ? SPARSE_NOTE : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={consoElec} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -247,12 +260,14 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </section>
       )}
 
       {singleVehicle && pricesElec.length > 1 && (
         <section className="card">
           <h2>Prix du kWh (€/kWh)</h2>
+          {pricesElec.length < 3 ? SPARSE_NOTE : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={pricesElec} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -262,6 +277,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </section>
       )}
 
