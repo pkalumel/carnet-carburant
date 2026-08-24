@@ -989,7 +989,9 @@ nav.tabs button.tab-plus {
   border-radius: 16px;
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 0 0 6px var(--surface), var(--shadow-float);
+  /* anneau à la couleur exacte de la barre, sans ombre : le médaillon
+     se fond dans la barre au lieu de l'assombrir */
+  box-shadow: 0 0 0 6px var(--surface);
   align-self: flex-start;
   padding: 0;
   display: grid;
