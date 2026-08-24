@@ -958,7 +958,7 @@ nav.tabs .inner {
   border-radius: 0;
   /* barre au ras de l'écran : le contenu se centre sur sa ligne médiane —
      une partie de la safe-area est absorbée (l'indicateur iOS reste libre) */
-  padding: 14px 10px max(calc(env(safe-area-inset-bottom) - 16px), 14px);
+  padding: 10px 10px max(calc(env(safe-area-inset-bottom) - 18px), 10px);
   box-shadow: var(--shadow-float);
 }
 /* Les onglets ne s'étirent pas à l'infini sur grand écran */
@@ -972,13 +972,13 @@ nav.tabs button {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  min-height: 56px;
-  padding: 8px 4px;
+  min-height: 46px;
+  padding: 5px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   transition: background 0.18s ease, color 0.18s ease;
 }
 nav.tabs button .ico { line-height: 0; display: block; }
