@@ -5,6 +5,8 @@ export interface Vehicle {
   name: string
   plate: string | null
   fuel: string | null
+  /** tarif électricité à domicile (€/kWh) — recharge « Maison » pré-tarifée */
+  home_kwh_price: number | null
   created_at: string
 }
 

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { addVehicle, deleteVehicle, updateVehicle } from '../lib/db'
-import type { Fillup, Vehicle } from '../lib/types'
+import { parseDecimal } from '../lib/format'
+import { energiesFor, type Fillup, type Vehicle } from '../lib/types'
 import { PencilIcon, PlusIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
@@ -52,6 +53,9 @@ function Editor({
   const [name, setName] = useState(vehicle.name)
   const [plate, setPlate] = useState(vehicle.plate ?? '')
   const [fuel, setFuel] = useState<string | null>(vehicle.fuel)
+  const [homePrice, setHomePrice] = useState(
+    vehicle.home_kwh_price != null ? String(vehicle.home_kwh_price).replace('.', ',') : '',
+  )
   const [confirming, setConfirming] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const nameMatches = confirmText.trim().toLowerCase() === vehicle.name.trim().toLowerCase()
@@ -61,7 +65,12 @@ function Editor({
     if (!name.trim()) return
     setBusy(true)
     try {
-      await updateVehicle(vehicle.id, { name: name.trim(), plate: plate.trim() || null, fuel })
+      await updateVehicle(vehicle.id, {
+        name: name.trim(),
+        plate: plate.trim() || null,
+        fuel,
+        home_kwh_price: energiesFor(fuel).includes('electric') ? parseDecimal(homePrice) : null,
+      })
       showToast('Véhicule modifié ✓')
       onDone(true)
     } catch (err) {
@@ -97,6 +106,21 @@ function Editor({
         </label>
       </div>
       <FuelChips value={fuel} onChange={setFuel} />
+      {energiesFor(fuel).includes('electric') && (
+        <label className="field">
+          <span className="lbl">Tarif maison (€/kWh)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={homePrice}
+            onChange={(e) => setHomePrice(e.target.value)}
+            placeholder="0,2470"
+          />
+          <span className="field-hint">
+            Appliqué automatiquement quand tu recharges à la maison.
+          </span>
+        </label>
+      )}
       <button className="btn btn-primary" disabled={busy}>
         <SaveIcon /> Enregistrer
       </button>

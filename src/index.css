@@ -1105,6 +1105,82 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Saisie : triangle, affixes, suggestions, plausibilité ---------- */
+/* Champ avec unité en affixe (le label reste au-dessus, jamais en placeholder) */
+.input-affix { position: relative; }
+.input-affix input { padding-right: 52px; }
+.input-affix .affix {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-64);
+  font-size: 13px;
+  pointer-events: none;
+}
+/* Champ dérivé du triangle (calculé en direct, redevient source au toucher) */
+.input-affix.calc input {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-press);
+  font-family: var(--mono);
+  padding-left: 32px;
+}
+.input-affix .affix-left {
+  left: 14px;
+  right: auto;
+  color: var(--accent-press);
+  font-family: var(--mono);
+  font-weight: 700;
+}
+/* Valeur pré-remplie « suggérée » : grise tant qu'elle n'est pas éditée */
+input.suggested { color: var(--ink-64); }
+
+/* Avertissement de plausibilité — informe, ne bloque pas */
+.field-warn {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent-press);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Ligne date repliée « Aujourd'hui, 18:15 » */
+.date-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  color: var(--ink);
+}
+.date-line .lbl { margin: 0; }
+.date-line .date-val {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+}
+.date-line .chev { color: var(--ink-64); transition: transform 0.18s ease; }
+
+/* Pied collant de la feuille de saisie : Enregistrer reste sous le pouce */
+.entry-form { display: flex; flex-direction: column; }
+.entry-form .sheet-body { display: flex; flex-direction: column; }
+.sheet .entry-form { padding-bottom: 0; }
+.sheet .entry-form .sheet-footer {
+  position: sticky;
+  bottom: 0;
+  margin: 4px -24px 0;
+  padding: 12px 24px max(env(safe-area-inset-bottom), 16px);
+  background: var(--surface);
+}
+
 /* ---------- Console d'administration (disposition « tableau d'abord ») ---------- */
 
 /* Bandeau KPI : 6 cases séparées par des filets en desktop, grille 3×2 en mobile */

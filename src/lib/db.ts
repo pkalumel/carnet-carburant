@@ -42,7 +42,7 @@ export async function addVehicle(
 
 export async function updateVehicle(
   id: string,
-  patch: { name: string; plate: string | null; fuel: string | null },
+  patch: { name: string; plate: string | null; fuel: string | null; home_kwh_price: number | null },
 ): Promise<void> {
   const { error } = await supabase.from('vehicles').update(patch).eq('id', id)
   if (error) throw new Error(`Modification impossible : ${error.message}`)
