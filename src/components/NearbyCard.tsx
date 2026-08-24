@@ -125,13 +125,18 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
     group.clearLayers()
     const electric = mode === 'electric'
     for (const pl of places) {
+      const fmtPrice = (v: number) =>
+        v.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
       const sub = [
         fmtDist(pl.dist),
         pl.kw != null ? `${pl.kw.toLocaleString('fr-FR')} kW` : null,
         pl.connectors != null ? `${pl.connectors} ${pl.connectors > 1 ? 'prises' : 'prise'}` : null,
-        pl.price != null
-          ? `${pl.price.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/L${pl.fuelLabel ? ` (${pl.fuelLabel})` : ''}`
+        pl.available != null
+          ? pl.available > 0
+            ? `${pl.available} libre${pl.available > 1 ? 's' : ''}`
+            : 'aucune libre'
           : null,
+        ...(pl.prices ?? []).map((x) => `${x.label} ${fmtPrice(x.price)} €`),
       ]
         .filter(Boolean)
         .join(' · ')

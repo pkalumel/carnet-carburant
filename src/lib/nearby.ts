@@ -19,10 +19,10 @@ export interface NearbyPlace {
   kw?: number
   /** bornes : nombre de prises */
   connectors?: number
-  /** stations : prix du carburant principal (€/L), quand HERE le fournit */
-  price?: number
-  /** stations : libellé du carburant du prix (« Diesel », « Super 95 »…) */
-  fuelLabel?: string
+  /** bornes : prises libres à l'instant (HERE temps réel, si publié) */
+  available?: number
+  /** stations : prix par carburant (€/L), quand HERE les fournit */
+  prices?: { label: string; price: number }[]
 }
 
 const RADIUS_KM = 5
@@ -177,7 +177,10 @@ interface HereBrowseItem {
     evStation?: {
       connectors?: {
         maxPowerLevel?: number | null
-        chargingPoint?: { numberOfConnectors?: number | null } | null
+        chargingPoint?: {
+          numberOfConnectors?: number | null
+          numberOfAvailable?: number | null
+        } | null
         connectorsCount?: number | null
       }[]
       totalNumberOfConnectors?: number | null
@@ -227,55 +230,91 @@ async function fetchChargersHere(p: GeoPoint, key: string): Promise<NearbyPlace[
       )
     if (kw > 0) base.kw = kw
     if (count > 0) base.connectors = count
+    // disponibilité temps réel, quand l'opérateur la publie
+    const avail = conns
+      .map((c) => c.chargingPoint?.numberOfAvailable)
+      .filter((n): n is number => n != null)
+    if (avail.length > 0) base.available = avail.reduce((a, b) => a + b, 0)
     places.push(base)
   }
   return places.sort((a, b) => a.dist - b.dist).slice(0, MAX_RESULTS)
 }
 
-/** Prix carburant HERE (Fuel Prices v2) — opportuniste : couverture selon
- * la zone et le plan ; toute erreur rend une carte vide. */
-async function hereFuelPrices(p: GeoPoint, key: string): Promise<{ lat: number; lng: number; price: number; label: string }[]> {
-  try {
-    const url =
-      `https://fuel-v2.cc.api.here.com/fuel/stations.json?prox=${p.lat},${p.lng},${RADIUS_KM * 1000}` +
-      `&apikey=${key}`
-    const data = (await fetchJson(url)) as {
-      stations?: {
-        latitude?: number
-        longitude?: number
-        fuelPrice?: { price?: number; fuelTypeName?: string; fuelType?: number }[]
-      }[]
-    } | null
-    if (!data?.stations) return []
-    const out: { lat: number; lng: number; price: number; label: string }[] = []
-    for (const st of data.stations) {
-      if (st.latitude == null || st.longitude == null) continue
-      const fp = (st.fuelPrice ?? []).find((f) => f.price != null && f.price > 0)
-      if (!fp) continue
-      out.push({ lat: st.latitude, lng: st.longitude, price: fp.price as number, label: fp.fuelTypeName ?? '' })
+/** Libellés courts des codes fuelType HERE rencontrés en Europe */
+const FUEL_LABELS: Record<string, string> = {
+  '1': 'Diesel',
+  '10': 'Diesel+',
+  '14': 'LPG',
+  '21': 'CNG',
+  '53': 'SP95 E5',
+  '54': 'SP95 E10',
+  '55': 'Diesel+',
+  '56': 'SP95',
+  '59': 'SP98',
+  '60': 'SP98',
+}
+/** priorité d'affichage : les carburants du quotidien d'abord */
+const FUEL_ORDER = ['1', '54', '53', '56', '59', '60', '55', '10', '14', '21']
+
+/** Stations essence/diesel via HERE Fuel Prices v3 : localisation, marque
+ * ET prix en un appel. Réservé aux zones couvertes par le plan — sinon
+ * l'appelant retombe sur /browse puis OSM. */
+async function fetchFuelStationsHere(p: GeoPoint, key: string): Promise<NearbyPlace[]> {
+  const url =
+    `https://fuel.hereapi.com/v3/stations?in=circle:${p.lat},${p.lng};r=${RADIUS_KM * 1000}` +
+    `&apiKey=${key}`
+  const data = (await fetchJson(url)) as {
+    stations?: {
+      id?: string
+      name?: string
+      brand?: string
+      distance?: number
+      position?: { lat?: number; lng?: number }
+      prices?: { price?: number; fuelType?: string; unit?: string }[]
+    }[]
+  } | null
+  if (!data?.stations) return []
+  const places: NearbyPlace[] = []
+  for (const st of data.stations) {
+    const lat = st.position?.lat
+    const lng = st.position?.lng
+    if (lat == null || lng == null) continue
+    const priced = (st.prices ?? []).filter((x) => x.price != null && x.price > 0 && x.fuelType != null)
+    priced.sort((a, b) => {
+      const ia = FUEL_ORDER.indexOf(a.fuelType as string)
+      const ib = FUEL_ORDER.indexOf(b.fuelType as string)
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+    })
+    // deux prix max : le diesel et l'essence courante suffisent en popup
+    const seen = new Set<string>()
+    const prices: { label: string; price: number }[] = []
+    for (const x of priced) {
+      const label = FUEL_LABELS[x.fuelType as string]
+      if (!label || seen.has(label)) continue
+      seen.add(label)
+      prices.push({ label, price: x.price as number })
+      if (prices.length === 2) break
     }
-    return out
-  } catch {
-    return []
+    places.push({
+      id: `here-fuel-${st.id ?? `${lat},${lng}`}`,
+      name: st.brand || st.name || 'Station-service',
+      dist: st.distance != null ? st.distance / 1000 : haversineKm(p, { lat, lng }),
+      lat,
+      lng,
+      ...(prices.length > 0 ? { prices } : {}),
+    })
   }
+  return places.sort((a, b) => a.dist - b.dist).slice(0, MAX_RESULTS)
 }
 
-/** Stations essence/diesel via HERE /browse, prix Fuel v2 rapprochés < 100 m */
-async function fetchFuelStationsHere(p: GeoPoint, key: string): Promise<NearbyPlace[]> {
-  const [items, prices] = await Promise.all([
-    hereBrowse(p, '700-7600-0116', key),
-    hereFuelPrices(p, key),
-  ])
+/** Repli intermédiaire : /browse (localisation seule, sans prix) */
+async function fetchFuelStationsHereBrowse(p: GeoPoint, key: string): Promise<NearbyPlace[]> {
+  const items = await hereBrowse(p, '700-7600-0116', key)
   const places: NearbyPlace[] = []
   for (const it of items) {
     const base = hereToPlace(p, it, 'here-fuel')
     if (!base) continue
     base.name = it.title || 'Station-service'
-    const near = prices.find((pr) => haversineKm(base, { lat: pr.lat, lng: pr.lng }) < 0.1)
-    if (near) {
-      base.price = near.price
-      if (near.label) base.fuelLabel = near.label
-    }
     places.push(base)
   }
   return places.sort((a, b) => a.dist - b.dist).slice(0, MAX_RESULTS)
@@ -291,7 +330,8 @@ export async function fetchFuelStations(p: GeoPoint): Promise<NearbyPlace[]> {
     const cached = readCache(ck)
     if (cached) return cached
     try {
-      const places = await fetchFuelStationsHere(p, key)
+      let places = await fetchFuelStationsHere(p, key)
+      if (places.length === 0) places = await fetchFuelStationsHereBrowse(p, key)
       if (places.length > 0) {
         writeCache(ck, places)
         return places
