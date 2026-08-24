@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { emailLinkType, supabase } from './lib/supabase'
 import { flushOutbox, loadFillups, loadVehicles } from './lib/db'
@@ -33,7 +33,12 @@ export default function App() {
   const [vehicleFilter, setVehicleFilter] = useState<string>(
     () => localStorage.getItem(VEHICLE_KEY) ?? 'all',
   )
-  const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
+  const [toast, setToast] = useState<{
+    msg: string
+    kind: 'ok' | 'err'
+    action?: { label: string; onAction: () => void }
+  } | null>(null)
+  const toastTimer = useRef(0)
   const [isAdmin, setIsAdmin] = useState(false)
   // Brouillon à ouvrir directement dans l'éditeur de l'Historique
   const [draftToOpen, setDraftToOpen] = useState<string | null>(null)
@@ -44,10 +49,19 @@ export default function App() {
   )
   const update = usePwaUpdate()
 
-  const showToast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
-    setToast({ msg, kind })
-    window.setTimeout(() => setToast(null), 3500)
-  }, [])
+  const showToast = useCallback(
+    (
+      msg: string,
+      kind: 'ok' | 'err' = 'ok',
+      action?: { label: string; onAction: () => void },
+      durationMs?: number,
+    ) => {
+      window.clearTimeout(toastTimer.current)
+      setToast({ msg, kind, action })
+      toastTimer.current = window.setTimeout(() => setToast(null), durationMs ?? 3500)
+    },
+    [],
+  )
 
   // Session Supabase
   useEffect(() => {
@@ -145,7 +159,22 @@ export default function App() {
           onDone={() => setNeedsPassword(false)}
           showToast={showToast}
         />
-        {toast && <div className={`toast ${toast.kind}`}>{toast.msg}</div>}
+        {toast && (
+        <div className={`toast ${toast.kind}`}>
+          {toast.msg}
+          {toast.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                toast.action?.onAction()
+                setToast(null)
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
       </>
     )
   }
@@ -287,6 +316,7 @@ export default function App() {
             userId={userId}
             initialEditId={draftToOpen}
             onInitialEditConsumed={() => setDraftToOpen(null)}
+            onResetFilter={() => setVehicleFilter('all')}
             onChanged={() => void refresh()}
             showToast={showToast}
           />
@@ -339,7 +369,22 @@ export default function App() {
         </div>
       </nav>
 
-      {toast && <div className={`toast ${toast.kind}`}>{toast.msg}</div>}
+      {toast && (
+        <div className={`toast ${toast.kind}`}>
+          {toast.msg}
+          {toast.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                toast.action?.onAction()
+                setToast(null)
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </>
   )
 }

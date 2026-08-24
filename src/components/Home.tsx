@@ -5,6 +5,7 @@ import {
   fmtDateTime, fmtEur, fmtKwh, fmtLiters, fmtPricePerKwh, fmtPricePerL,
 } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
+import AnimatedNumber from './AnimatedNumber'
 import FillupForm from './FillupForm'
 import QuickCapture from './QuickCapture'
 import { Meter } from './chartKit'
@@ -126,7 +127,7 @@ export default function Home({
         <h2>Ce mois-ci</h2>
         <div className="meter-lead-row">
           <div className="meter-big lead">
-            {num(monthCost, 2)}
+            <AnimatedNumber value={monthCost} />
             <span className="meter-unit">€</span>
           </div>
           <div className="meter-label">

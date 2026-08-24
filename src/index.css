@@ -1105,6 +1105,24 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Feedback : action de toast, pastille d'attente ---------- */
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 0 0 0 4px;
+  min-height: 44px;
+}
+.pending-dot {
+  display: inline-grid;
+  place-items: center;
+  margin-left: 6px;
+  color: var(--accent-press);
+  vertical-align: -2px;
+}
+
 /* ---------- Stats : cartes « un KPI, une courbe » ---------- */
 .kpi-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
 .kpi-row .kpi-val {

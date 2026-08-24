@@ -8,7 +8,7 @@ import {
 import { consumptionSeries, summarize, type ConsoPoint } from '../lib/stats'
 import { Meter } from './chartKit'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
-import { AttachIcon, BoltIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
+import { AttachIcon, BoltIcon, ClockIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
@@ -20,7 +20,14 @@ interface Props {
   initialEditId?: string | null
   onInitialEditConsumed?: () => void
   onChanged: () => void
-  showToast: (msg: string, kind?: 'ok' | 'err') => void
+  /** revenir à « Tous » quand le filtre véhicule ne donne rien */
+  onResetFilter?: () => void
+  showToast: (
+    msg: string,
+    kind?: 'ok' | 'err',
+    action?: { label: string; onAction: () => void },
+    durationMs?: number,
+  ) => void
 }
 
 function usePhotoUrl(path: string | null) {
@@ -53,12 +60,14 @@ function Editor({
   vehicles,
   allFillups,
   onDone,
+  onDeleteRequest,
   showToast,
 }: {
   fillup: Fillup
   vehicles: Vehicle[]
   allFillups: Fillup[]
   onDone: () => void
+  onDeleteRequest: (f: Fillup) => void
   showToast: Props['showToast']
 }) {
   const [vehicleId, setVehicleId] = useState(fillup.vehicle_id)
@@ -145,17 +154,10 @@ function Editor({
     }
   }
 
-  async function remove() {
-    if (!confirm(electric ? 'Supprimer cette recharge ?' : 'Supprimer ce plein ?')) return
-    setBusy(true)
-    try {
-      await deleteFillup(fillup)
-      showToast(electric ? 'Recharge supprimée' : 'Plein supprimé', 'ok')
-      onDone()
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Suppression impossible', 'err')
-      setBusy(false)
-    }
+  function remove() {
+    // Suppression optimiste avec Annuler (gérée par l'Historique) :
+    // pas de dialog de confirmation pour une action réversible.
+    onDeleteRequest(fillup)
   }
 
   return (
@@ -292,9 +294,72 @@ const monthOf = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
 export default function History({
-  fillups, allFillups, vehicles, userId, initialEditId, onInitialEditConsumed, onChanged, showToast,
+  fillups, allFillups, vehicles, userId, initialEditId, onInitialEditConsumed, onChanged, onResetFilter, showToast,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Suppression optimiste : la ligne disparaît tout de suite, la vraie
+  // suppression part après 6 s sauf Annuler ; départ de l'écran = commit.
+  const [hiddenId, setHiddenId] = useState<string | null>(null)
+  const pendingDeleteRef = useRef<{ f: Fillup; timer: number } | null>(null)
+  // Refs stables : commitDelete ne doit JAMAIS changer d'identité, sinon le
+  // cleanup d'effet committerait la suppression au premier re-rendu.
+  const onChangedRef = useRef(onChanged)
+  onChangedRef.current = onChanged
+  const showToastRef = useRef(showToast)
+  showToastRef.current = showToast
+  const commitDelete = useRef(() => {
+    const p = pendingDeleteRef.current
+    if (!p) return
+    pendingDeleteRef.current = null
+    window.clearTimeout(p.timer)
+    void deleteFillup(p.f)
+      .then(() => {
+        setHiddenId(null)
+        onChangedRef.current()
+      })
+      .catch(() => {
+        setHiddenId(null)
+        showToastRef.current('Suppression impossible', 'err')
+      })
+  }).current
+  const requestDelete = (f: Fillup) => {
+    if (pendingDeleteRef.current) commitDelete()
+    const timer = window.setTimeout(() => commitDelete(), 6000)
+    pendingDeleteRef.current = { f, timer }
+    setHiddenId(f.id)
+    setEditingId(null)
+    showToast(
+      f.energy === 'electric' ? 'Recharge supprimée' : 'Plein supprimé',
+      'ok',
+      {
+        label: 'Annuler',
+        onAction: () => {
+          const p = pendingDeleteRef.current
+          if (p) {
+            window.clearTimeout(p.timer)
+            pendingDeleteRef.current = null
+          }
+          setHiddenId(null)
+        },
+      },
+      6000,
+    )
+  }
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') commitDelete()
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('beforeunload', commitDelete)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('beforeunload', commitDelete)
+      commitDelete() // départ de l'écran = la suppression en attente part
+    }
+    // commitDelete est une ref stable : montage/démontage uniquement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Ouverture directe demandée par l'accueil (carte « À compléter »)
   useEffect(() => {
@@ -320,8 +385,8 @@ export default function History({
   const [yearsBack, setYearsBack] = useState(0)
   const cutoffYear = new Date().getFullYear() - yearsBack
   const visibleFillups = useMemo(
-    () => fillups.filter((f) => new Date(f.filled_at).getFullYear() >= cutoffYear),
-    [fillups, cutoffYear],
+    () => fillups.filter((f) => f.id !== hiddenId && new Date(f.filled_at).getFullYear() >= cutoffYear),
+    [fillups, cutoffYear, hiddenId],
   )
   const hasOlder = useMemo(
     () => fillups.some((f) => new Date(f.filled_at).getFullYear() < cutoffYear),
@@ -382,13 +447,25 @@ export default function History({
   }, [editing])
 
   if (fillups.length === 0) {
+    const filteredOut = allFillups.some((f) => !f.is_draft)
     return (
       <div className="card empty">
         <div className="empty-ico">
           <PumpIcon size={30} />
         </div>
-        <div className="empty-title">Aucun plein pour l’instant</div>
-        Le premier s’enregistre dans l’onglet « Plein », en bas de l’écran.
+        <div className="empty-title">
+          {filteredOut ? 'Aucun plein pour ce véhicule' : 'Aucun plein pour l’instant'}
+        </div>
+        {filteredOut
+          ? 'Ce véhicule n’a pas encore de plein enregistré.'
+          : 'Le premier s’enregistre depuis l’accueil, avec le bouton « Saisir un plein ».'}
+        {filteredOut && onResetFilter && (
+          <div className="row-actions" style={{ justifyContent: 'center' }}>
+            <button className="btn-ghost" onClick={onResetFilter}>
+              Voir tous les véhicules
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -497,7 +574,11 @@ export default function History({
                     <td>
                       {electric && <span className="badge badge-elec">⚡ Recharge</span>}
                       {f.is_draft && <span className="badge badge-draft">À compléter</span>}
-                      {f.pending && <span className="badge badge-pending">En attente</span>}
+                      {f.pending && (
+                    <span className="pending-dot" title="En attente de synchronisation">
+                      <ClockIcon size={13} />
+                    </span>
+                  )}
                       {!f.is_full && !f.is_draft && (
                         <span className="badge badge-partial">{electric ? 'Partielle' : 'Partiel'}</span>
                       )}
@@ -552,7 +633,11 @@ export default function History({
                   {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
                   {electric && <span className="badge badge-elec">⚡ Recharge</span>}
                   {f.is_draft && <span className="badge badge-draft">À compléter</span>}
-                  {f.pending && <span className="badge badge-pending">En attente</span>}
+                  {f.pending && (
+                    <span className="pending-dot" title="En attente de synchronisation">
+                      <ClockIcon size={13} />
+                    </span>
+                  )}
                   {!f.is_full && !f.is_draft && (
                     <span className="badge badge-partial">{electric ? 'Partielle' : 'Partiel'}</span>
                   )}
@@ -606,6 +691,7 @@ export default function History({
               fillup={editing}
               vehicles={vehicles}
               allFillups={allFillups}
+              onDeleteRequest={requestDelete}
               showToast={showToast}
               onDone={() => {
                 setEditingId(null)
