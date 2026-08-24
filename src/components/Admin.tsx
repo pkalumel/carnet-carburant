@@ -256,7 +256,7 @@ function UserSheet({ userId, showToast, onClose, onChanged }: {
               )}
               {detail.recent_fillups.map((f) => (
                 <div key={f.id} className="fillup-item">
-                  <div className="thumb ph">
+                  <div className={f.energy === 'electric' ? 'thumb ph elec' : 'thumb ph fuel'}>
                     {f.energy === 'electric' ? <BoltIcon size={22} /> : <PumpIcon size={22} />}
                   </div>
                   <div className="body">

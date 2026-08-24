@@ -28,7 +28,7 @@ const num = (v: number | null, digits: number) =>
     ? '—'
     : v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
-function DraftThumb({ path }: { path: string | null }) {
+function DraftThumb({ path, electric }: { path: string | null; electric: boolean }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
@@ -40,7 +40,7 @@ function DraftThumb({ path }: { path: string | null }) {
   }, [path])
   if (url) return <img className="thumb" src={url} alt="" />
   return (
-    <div className="thumb ph">
+    <div className={electric ? 'thumb ph elec' : 'thumb ph fuel'}>
       <CameraIcon size={22} />
     </div>
   )
@@ -160,7 +160,7 @@ export default function Home({
           </h2>
           {drafts.map((f) => (
             <div key={f.id} className="fillup-item">
-              <DraftThumb path={f.photo_path} />
+              <DraftThumb path={f.photo_path} electric={f.energy === 'electric'} />
               <div className="body">
                 <div className="date">
                   {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
@@ -179,7 +179,7 @@ export default function Home({
         <section className="card">
           <h2>Dernier plein</h2>
           <div className="fillup-item">
-            <div className="thumb ph">
+            <div className={last.energy === 'electric' ? 'thumb ph elec' : 'thumb ph fuel'}>
               {last.energy === 'electric' ? <BoltIcon size={22} /> : <PumpIcon size={22} />}
             </div>
             <div className="body">

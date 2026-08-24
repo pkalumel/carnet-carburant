@@ -304,6 +304,90 @@ function Editor({
 }
 
 // ------------------------------------------------------------
+// Glissement vers la gauche → bouton Supprimer (complément du tap ;
+// le chemin éditeur → Supprimer reste toujours disponible)
+// ------------------------------------------------------------
+
+function SwipeRow({
+  enabled, open, onOpenChange, onDelete, deleteLabel, children,
+}: {
+  enabled: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onDelete: () => void
+  deleteLabel: string
+  children: React.ReactNode
+}) {
+  const [drag, setDrag] = useState<number | null>(null)
+  const start = useRef<{ x: number; y: number; edge: boolean; axis: 'h' | 'v' | null }>(
+    { x: 0, y: 0, edge: false, axis: null },
+  )
+
+  const base = open ? -88 : 0
+  const offset = drag != null ? Math.max(-88, Math.min(0, base + drag)) : base
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (!enabled) return
+    const t = e.touches[0]
+    // ±24 px du bord gauche : réservé au geste « retour » du système
+    start.current = { x: t.clientX, y: t.clientY, edge: t.clientX <= 24, axis: null }
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (!enabled || start.current.edge) return
+    const t = e.touches[0]
+    const dx = t.clientX - start.current.x
+    const dy = t.clientY - start.current.y
+    if (start.current.axis == null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+      start.current.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+      if (start.current.axis === 'v') {
+        // défilement vertical : la rangée ouverte se referme
+        if (open) onOpenChange(false)
+        return
+      }
+    }
+    if (start.current.axis === 'h') setDrag(dx)
+  }
+  function onTouchEnd() {
+    if (drag == null) return
+    const shouldOpen = offset < -40
+    setDrag(null)
+    onOpenChange(shouldOpen)
+  }
+
+  return (
+    <div
+      className="swipe-row"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      {enabled && (
+        <button
+          type="button"
+          className="swipe-delete"
+          aria-label={deleteLabel}
+          tabIndex={open ? 0 : -1}
+          onClick={onDelete}
+        >
+          Supprimer
+        </button>
+      )}
+      <div
+        className="swipe-content"
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: drag != null ? 'none' : 'transform 0.18s ease',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------
 // Liste de l'historique
 // ------------------------------------------------------------
 
@@ -314,6 +398,10 @@ export default function History({
   fillups, allFillups, vehicles, userId, initialEditId, onInitialEditConsumed, onChanged, onResetFilter, showToast,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
+  // Filtres rapides d'énergie, appliqués à la liste ET au tableau desktop
+  const [energyFilter, setEnergyFilter] = useState<'all' | Energy>('all')
+  // Une seule rangée « swipée » ouverte à la fois
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
 
   // Suppression optimiste : la ligne disparaît tout de suite, la vraie
   // suppression part après 6 s sauf Annuler ; départ de l'écran = commit.
@@ -398,16 +486,33 @@ export default function History({
   const drafts = fillups.filter((f) => f.is_draft && canEdit(f))
   const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
 
+  const hasBothEnergies = useMemo(
+    () => fillups.some((f) => f.energy === 'electric') && fillups.some((f) => f.energy !== 'electric'),
+    [fillups],
+  )
+  const list = useMemo(
+    () => (energyFilter === 'all' ? fillups : fillups.filter((f) => f.energy === energyFilter)),
+    [fillups, energyFilter],
+  )
+
+  // Un défilement de page referme la rangée swipée
+  useEffect(() => {
+    if (!swipeOpenId) return
+    const close = () => setSwipeOpenId(null)
+    window.addEventListener('scroll', close, { passive: true })
+    return () => window.removeEventListener('scroll', close)
+  }, [swipeOpenId])
+
   // Pagination douce : l'année en cours d'abord, le passé à la demande
   const [yearsBack, setYearsBack] = useState(0)
   const cutoffYear = new Date().getFullYear() - yearsBack
   const visibleFillups = useMemo(
-    () => fillups.filter((f) => f.id !== hiddenId && new Date(f.filled_at).getFullYear() >= cutoffYear),
-    [fillups, cutoffYear, hiddenId],
+    () => list.filter((f) => f.id !== hiddenId && new Date(f.filled_at).getFullYear() >= cutoffYear),
+    [list, cutoffYear, hiddenId],
   )
   const hasOlder = useMemo(
-    () => fillups.some((f) => new Date(f.filled_at).getFullYear() < cutoffYear),
-    [fillups, cutoffYear],
+    () => list.some((f) => new Date(f.filled_at).getFullYear() < cutoffYear),
+    [list, cutoffYear],
   )
 
   // Groupes par mois (pour la liste mobile en carnet réglé)
@@ -441,7 +546,7 @@ export default function History({
   // Agrégats par mois affiché (liste éventuellement filtrée par véhicule)
   const monthAgg = useMemo(() => {
     const map = new Map<string, { total: number; n: number }>()
-    for (const f of fillups) {
+    for (const f of list) {
       const label = monthOf(f.filled_at)
       const agg = map.get(label) ?? { total: 0, n: 0 }
       if (f.total_price != null) agg.total += f.total_price
@@ -449,10 +554,10 @@ export default function History({
       map.set(label, agg)
     }
     return map
-  }, [fillups])
+  }, [list])
 
   // Résumé de la liste affichée, pour le bandeau de tête
-  const summary = useMemo(() => summarize(fillups), [fillups])
+  const summary = useMemo(() => summarize(list), [list])
 
   // La feuille ouverte fige le défilement de la page derrière
   useEffect(() => {
@@ -475,7 +580,7 @@ export default function History({
         </div>
         {filteredOut
           ? 'Ce véhicule n’a pas encore de plein enregistré.'
-          : 'Le premier s’enregistre depuis l’accueil, avec le bouton « Saisir un plein ».'}
+          : 'Le premier s’enregistre avec le bouton « + » en bas de l’écran.'}
         {filteredOut && onResetFilter && (
           <div className="row-actions" style={{ justifyContent: 'center' }}>
             <button className="btn-ghost" onClick={onResetFilter}>
@@ -515,6 +620,35 @@ export default function History({
           </div>
         </section>
       )}
+      {hasBothEnergies && (
+        <div className="chips history-filter">
+          {(
+            [
+              ['all', 'Tous'],
+              ['fuel', 'Carburant'],
+              ['electric', 'Recharges'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={energyFilter === key ? 'chip active' : 'chip'}
+              onClick={() => setEnergyFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {list.length === 0 && (
+        <div className="card empty">
+          {energyFilter === 'electric'
+            ? 'Aucune recharge dans cette liste.'
+            : 'Aucun plein carburant dans cette liste.'}
+        </div>
+      )}
+
       {/* Desktop : tableau d'abord (la liste ci-dessous reprend la main en mobile) */}
       <div className="history-table-wrap card" style={{ padding: '4px 12px 8px' }}>
         <table className="admin-table">
@@ -623,10 +757,25 @@ export default function History({
         const conso = consoByFillup.get(`${f.vehicle_id}|${f.energy}|${f.filled_at}`)
         const electric = f.energy === 'electric'
         return (
+          <SwipeRow
+            key={f.id}
+            enabled={canEdit(f) && !f.pending}
+            open={swipeOpenId === f.id}
+            onOpenChange={(o) => setSwipeOpenId(o ? f.id : null)}
+            onDelete={() => {
+              setSwipeOpenId(null)
+              requestDelete(f)
+            }}
+            deleteLabel={electric ? 'Supprimer cette recharge' : 'Supprimer ce plein'}
+          >
             <button
-              key={f.id}
               className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
               onClick={() => {
+                if (swipeOpenId) {
+                  // tap ailleurs : referme la rangée ouverte, sans naviguer
+                  setSwipeOpenId(null)
+                  return
+                }
                 if (f.pending) {
                   showToast('Ce plein sera modifiable après synchronisation', 'err')
                   return
@@ -641,7 +790,7 @@ export default function History({
               {f.photo_path ? (
                 <Thumb path={f.photo_path} />
               ) : (
-                <div className="thumb ph">
+                <div className={electric ? 'thumb ph elec' : 'thumb ph fuel'}>
                   {electric ? <BoltIcon size={22} /> : <PumpIcon size={22} />}
                 </div>
               )}
@@ -686,6 +835,7 @@ export default function History({
                 )}
               </div>
             </button>
+          </SwipeRow>
         )
       })}
           </div>

@@ -701,6 +701,11 @@ button { font-family: var(--sans); cursor: pointer; }
   place-items: center;
   color: var(--accent-press);
 }
+/* Différenciation d'énergie : carburant = jaune, recharge = vert */
+.fillup-item .thumb.ph.elec {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
 .fillup-item .body { flex: 1; min-width: 0; }
 .fillup-item .date {
   font-size: 11.5px;
@@ -741,6 +746,32 @@ button { font-family: var(--sans); cursor: pointer; }
 }
 .card .fillup-item:last-child { border-bottom: none; }
 .card .fillup-item:active { transform: none; }
+
+/* Glissement vers la gauche → Supprimer (le séparateur passe à l'enveloppe) */
+.swipe-row { position: relative; overflow: hidden; }
+.card .swipe-row { border-bottom: 1px solid var(--line); }
+.card .swipe-row:last-child { border-bottom: none; }
+.card .swipe-row .fillup-item { border-bottom: none; }
+.swipe-content { position: relative; background: var(--surface); }
+.swipe-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 88px;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: var(--sans);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* Filtres rapides d'énergie de l'historique */
+.history-filter { margin-bottom: 4px; }
 
 .badge {
   display: inline-block;
