@@ -5,10 +5,11 @@ import {
   fmtConso, fmtConsoElec, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters, fmtPricePerKwh,
   fmtPricePerL, parseDecimal, toLocalInputValue,
 } from '../lib/format'
+import { mapsUrl } from '../lib/geo'
 import { consumptionSeries, summarize, type ConsoPoint } from '../lib/stats'
 import { Meter } from './chartKit'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
-import { AttachIcon, BoltIcon, ClockIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
+import { AttachIcon, BoltIcon, ClockIcon, PinIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   fillups: Fillup[]
@@ -168,6 +169,22 @@ function Editor({
           : electric ? 'Modifier la recharge' : 'Modifier le plein'}
       </h2>
       {photoUrl && <img className="photo-full" src={photoUrl} alt={electric ? 'Écran de la borne' : 'Écran de la pompe'} />}
+      {fillup.lat != null && fillup.lng != null && (
+        <div className="geo-line">
+          <span className="geo-ico" aria-hidden>
+            <PinIcon size={15} />
+          </span>
+          <span className="geo-label">{fillup.place ?? `${fillup.lat.toFixed(4)}, ${fillup.lng.toFixed(4)}`}</span>
+          <a
+            className="geo-map"
+            href={mapsUrl({ lat: fillup.lat, lng: fillup.lng })}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Carte
+          </a>
+        </div>
+      )}
       {energies.length > 1 && (
         <div className="field">
           <span className="lbl">Énergie</span>
@@ -662,6 +679,7 @@ export default function History({
                     </div>
                     <div className="sub2">
                       {fmtKm(f.odometer_km)}
+                      {f.place ? ` · ${f.place}` : ''}
                       {f.created_by_email ? ` · ${f.created_by_email.split('@')[0]}` : ''}
                     </div>
                   </>

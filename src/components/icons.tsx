@@ -21,6 +21,15 @@ export function PumpIcon({ size = 22 }: IconProps) {
   )
 }
 
+export function PinIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>
+      <path d="M12 21s-6.5-5.6-6.5-10.3a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z" />
+      <circle cx="12" cy="10.5" r="2.3" />
+    </svg>
+  )
+}
+
 export function ClockIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base} aria-hidden>

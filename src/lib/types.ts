@@ -49,6 +49,10 @@ export interface Fillup {
   is_draft: boolean
   photo_path: string | null
   notes: string | null
+  /** position au moment de la saisie (optionnelle) + libellé lisible */
+  lat: number | null
+  lng: number | null
+  place: string | null
   created_by: string | null
   created_by_email: string | null
   created_at: string
@@ -66,5 +70,8 @@ export interface FillupInput {
   is_full: boolean
   is_draft: boolean
   notes: string | null
+  lat: number | null
+  lng: number | null
+  place: string | null
   created_by_email: string | null
 }

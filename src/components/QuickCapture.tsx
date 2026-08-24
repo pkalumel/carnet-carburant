@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { saveFillup } from '../lib/db'
+import { captureLocation, reverseGeocode } from '../lib/geo'
 import { downscalePhoto } from '../lib/image'
 import { energiesFor, type Energy, type Vehicle } from '../lib/types'
 import { CameraIcon } from './icons'
@@ -40,7 +41,9 @@ export default function QuickCapture({ vehicles, vehicleId, energy, userEmail, v
     }
     setBusy(true)
     try {
-      const blob = await downscalePhoto(file)
+      // Photo et position en parallèle : le lieu de la capture EST la station
+      const [blob, loc] = await Promise.all([downscalePhoto(file), captureLocation(5000)])
+      const place = loc ? await reverseGeocode(loc) : null
       const status = await saveFillup(
         {
           vehicle_id: vehicle.id,
@@ -52,6 +55,9 @@ export default function QuickCapture({ vehicles, vehicleId, energy, userEmail, v
           is_full: true,
           is_draft: true,
           notes: null,
+          lat: loc?.lat ?? null,
+          lng: loc?.lng ?? null,
+          place,
           created_by_email: userEmail,
         },
         blob,

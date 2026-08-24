@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import { fmtDateTime, fmtKm, parseDecimal, toLocalInputValue } from '../lib/format'
+import { captureLocation, reverseGeocode, type GeoPoint } from '../lib/geo'
 import { checkFillup } from '../lib/plausibility'
 import {
   derivedField, editField, emptyTriangle, setSourceValue, triangleValues, type Triangle,
 } from '../lib/triangle'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
 import { LAST_VEHICLE_KEY } from './QuickCapture'
-import { AttachIcon, BoltIcon, PumpIcon, SaveIcon } from './icons'
+import { AttachIcon, BoltIcon, PinIcon, PumpIcon, SaveIcon, XIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -66,6 +67,24 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
   const attachInput = useRef<HTMLInputElement>(null)
   const volumeInput = useRef<HTMLInputElement>(null)
   const totalInput = useRef<HTMLInputElement>(null)
+
+  // Lieu de la saisie : capturé à l'ouverture, retirable, jamais bloquant
+  const [geo, setGeo] = useState<GeoPoint | null>(null)
+  const [place, setPlace] = useState<string | null>(null)
+  const [geoOff, setGeoOff] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void captureLocation().then((p) => {
+      if (!alive || !p) return
+      setGeo(p)
+      void reverseGeocode(p).then((label) => {
+        if (alive) setPlace(label)
+      })
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // Énergies possibles pour le véhicule choisi ; le choix explicite ne
   // survit que s'il reste valable après un changement de véhicule.
@@ -197,6 +216,9 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
           is_full: isFull,
           is_draft: false,
           notes: notes.trim() || null,
+          lat: geoOff ? null : (geo?.lat ?? null),
+          lng: geoOff ? null : (geo?.lng ?? null),
+          place: geoOff ? null : place,
           created_by_email: userEmail,
         },
         blob,
@@ -367,6 +389,25 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
             <span aria-hidden>⚠</span> {w}
           </div>
         ))}
+
+        {geo && !geoOff && (
+          <div className="geo-line">
+            <span className="geo-ico" aria-hidden>
+              <PinIcon size={15} />
+            </span>
+            <span className="geo-label">
+              {place ?? `${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}`}
+            </span>
+            <button
+              type="button"
+              className="geo-off"
+              aria-label="Ne pas enregistrer le lieu"
+              onClick={() => setGeoOff(true)}
+            >
+              <XIcon size={14} />
+            </button>
+          </div>
+        )}
 
         <button type="button" className="date-line" onClick={() => setDateOpen(!dateOpen)}>
           <span className="lbl">Date</span>
