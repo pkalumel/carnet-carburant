@@ -15,6 +15,8 @@ interface Props {
   vehicles: Vehicle[]
   fillups: Fillup[]
   defaultVehicleId: string | null
+  /** énergie pré-sélectionnée (raccourci PWA « Recharge ») */
+  defaultEnergy?: Energy
   userEmail: string | null
   onSaved: (status: 'synced' | 'queued', draft: boolean) => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
@@ -38,7 +40,7 @@ function dateLabel(value: string): string {
   return fmtDateTime(d.toISOString())
 }
 
-export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEmail, onSaved, showToast }: Props) {
+export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaultEnergy, userEmail, onSaved, showToast }: Props) {
   const [vehicleId, setVehicleId] = useState(() => {
     const last = localStorage.getItem(LAST_VEHICLE_KEY)
     return (
@@ -48,7 +50,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, userEm
       ''
     )
   })
-  const [energyChoice, setEnergyChoice] = useState<Energy | null>(null)
+  const [energyChoice, setEnergyChoice] = useState<Energy | null>(defaultEnergy ?? null)
   const [triangle, setTriangle] = useState<Triangle>(emptyTriangle)
   const [odo, setOdo] = useState('')
   const [odoTouched, setOdoTouched] = useState(false)

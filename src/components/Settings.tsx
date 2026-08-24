@@ -4,13 +4,15 @@ import { useTheme, type ThemePref } from '../lib/theme'
 import type { Fillup, Vehicle } from '../lib/types'
 import VehicleManager from './VehicleManager'
 import ShareManager from './ShareManager'
-import { DownloadIcon, KeyIcon, LogoutIcon } from './icons'
+import { DownloadIcon, KeyIcon, LogoutIcon, ShieldIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
   fillups: Fillup[]
   userId: string
   userEmail: string | null
+  isAdmin: boolean
+  onOpenAdmin: () => void
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
@@ -44,7 +46,7 @@ function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
   return '﻿' + rows.join('\r\n')
 }
 
-export default function Settings({ vehicles, fillups, userId, userEmail, onChanged, showToast }: Props) {
+export default function Settings({ vehicles, fillups, userId, userEmail, isAdmin, onOpenAdmin, onChanged, showToast }: Props) {
   const [theme, setTheme] = useTheme()
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -84,6 +86,18 @@ export default function Settings({ vehicles, fillups, userId, userEmail, onChang
       <VehicleManager vehicles={vehicles} fillups={fillups} userId={userId} onChanged={onChanged} showToast={showToast} />
 
       <div className="settings-aside">
+      {isAdmin && (
+        <section className="card">
+          <h2>Administration</h2>
+          <p className="settings-note">
+            Comptes, activité et santé du service — réservé aux administrateurs.
+          </p>
+          <button className="btn-ghost" style={{ width: '100%' }} onClick={onOpenAdmin}>
+            <ShieldIcon /> Ouvrir la console d’administration
+          </button>
+        </section>
+      )}
+
       <section className="card">
         <h2>Données</h2>
         <p className="settings-note">

@@ -13,6 +13,8 @@ import { BoltIcon, PumpIcon, TrashIcon, XIcon } from './icons'
 
 interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
+  /** l'admin s'ouvre depuis Réglages : chemin de retour */
+  onBack: () => void
 }
 
 type SortKey = 'activity' | 'created' | 'fillups' | 'email'
@@ -356,7 +358,7 @@ function SortTh({ label, k, sort, dir, onSort, align }: {
 
 // ---------- Console ----------
 
-export default function Admin({ showToast }: Props) {
+export default function Admin({ showToast, onBack }: Props) {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [health, setHealth] = useState<AdminHealth | null>(null)
   const [search, setSearch] = useState('')
@@ -414,6 +416,10 @@ export default function Admin({ showToast }: Props) {
 
   return (
     <>
+      <div className="admin-back">
+        <button className="btn-ghost" onClick={onBack}>← Réglages</button>
+      </div>
+
       {overview ? (
         <KpiStrip overview={overview} health={health} />
       ) : (

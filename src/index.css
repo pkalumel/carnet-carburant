@@ -798,8 +798,28 @@ nav.tabs button {
   transition: background 0.18s ease, color 0.18s ease;
 }
 nav.tabs button .ico { line-height: 0; display: block; }
+/* Bouton central « + » : l'action principale, seule présence du jaune dans la barre */
+nav.tabs button.tab-plus {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  min-height: 56px;
+  margin: -18px 6px 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-float);
+  align-self: flex-start;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+nav.tabs button.tab-plus:active { transform: scale(0.94); }
+@media (max-width: 359px) {
+  nav.tabs button.tab-plus { width: 52px; height: 52px; min-height: 52px; margin-top: -16px; }
+}
 nav.tabs button.active {
-  color: var(--accent);
+  color: var(--on-ink);
   background: var(--on-ink-08);
 }
 
@@ -1177,10 +1197,11 @@ html, body { overscroll-behavior-y: none; }
 .btn-photo {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 12px 18px;
   background: var(--surface);
-  flex: none;
+  flex: 1;
 }
 .btn-photo .cam-mini {
   display: grid;
@@ -1316,6 +1337,10 @@ input.suggested { color: var(--ink-64); }
 .card.admin-kpis > div { padding: 4px 24px; border-right: 1px solid var(--line); }
 .card.admin-kpis > div:last-child { border-right: none; }
 .card.admin-kpis .meter-big { font-size: 24px; }
+
+/* Retour vers Réglages : l'admin n'a plus d'onglet dans la barre */
+.admin-back { display: flex; }
+.admin-back .btn-ghost { padding-left: 10px; padding-right: 14px; }
 
 .admin-toolbar {
   display: flex;

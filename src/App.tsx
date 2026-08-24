@@ -8,11 +8,12 @@ import { listOutbox } from './lib/outbox'
 import type { Fillup, Vehicle } from './lib/types'
 import AuthScreen from './components/AuthScreen'
 import SetPasswordScreen from './components/SetPasswordScreen'
+import FillupForm from './components/FillupForm'
 import Home from './components/Home'
 import History from './components/History'
 import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
-import { GearIcon, HistoryIcon, HomeIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
+import { GearIcon, HistoryIcon, HomeIcon, PlusIcon, PumpIcon, StatsIcon } from './components/icons'
 import { FILL_COUNT_KEY, useInstallBanner, usePwaUpdate } from './lib/pwa'
 import { PULL_THRESHOLD, usePullToRefresh } from './lib/usePullToRefresh'
 
@@ -52,6 +53,8 @@ export default function App() {
     () => emailLinkType === 'invite' || emailLinkType === 'recovery',
   )
   const update = usePwaUpdate()
+  // Feuille de saisie GLOBALE : le « + » central l'ouvre depuis tout onglet
+  const [entryOpen, setEntryOpen] = useState(bootAction === 'new' || bootAction === 'recharge')
   const [fillCount, setFillCount] = useState(() => Number(localStorage.getItem(FILL_COUNT_KEY) ?? 0))
   const install = useInstallBanner(fillCount)
 
@@ -123,6 +126,15 @@ export default function App() {
     }
     void checkIsAdmin().then(setIsAdmin)
   }, [session])
+
+  // La feuille ouverte fige le défilement de la page derrière
+  useEffect(() => {
+    if (!entryOpen) return
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [entryOpen])
 
   // Rattache les invitations de partage en attente portant mon adresse
   // (inscription via le lien d'invitation OU inscription normale), puis
@@ -306,11 +318,9 @@ export default function App() {
               <Home
                 vehicles={vehicles}
                 fillups={filtered}
-                allFillups={fillups}
                 vehicleFilter={vehicleFilter}
                 userEmail={userEmail}
                 showToast={showToast}
-                autoOpenEntry={bootAction === 'new' || bootAction === 'recharge'}
                 onOpenHistory={() => setTab('history')}
                 onOpenDraft={(id) => {
                   setDraftToOpen(id)
@@ -363,6 +373,8 @@ export default function App() {
             fillups={fillups}
             userId={userId}
             userEmail={userEmail}
+            isAdmin={isAdmin}
+            onOpenAdmin={() => setTab('admin')}
             onChanged={() => void refresh()}
             showToast={showToast}
           />
@@ -371,7 +383,7 @@ export default function App() {
         {tab === 'admin' && isAdmin && (
           <Suspense fallback={<div className="card empty">Chargement…</div>}>
             {/* key : le tirer-pour-actualiser remonte la console et refait ses requêtes */}
-            <Admin key={reloadTick} showToast={showToast} />
+            <Admin key={reloadTick} showToast={showToast} onBack={() => setTab('settings')} />
           </Suspense>
         )}
       </main>
@@ -384,19 +396,55 @@ export default function App() {
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             <span className="ico"><HistoryIcon /></span>Historique
           </button>
+          <button
+            className="tab-plus"
+            aria-label="Saisir un plein ou une recharge"
+            onClick={() => setEntryOpen(true)}
+          >
+            <PlusIcon size={26} />
+          </button>
           <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>
             <span className="ico"><StatsIcon /></span>Stats
           </button>
           <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
             <span className="ico"><GearIcon /></span>Réglages
           </button>
-          {isAdmin && (
-            <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>
-              <span className="ico"><ShieldIcon /></span>Admin
-            </button>
-          )}
         </div>
       </nav>
+
+      {entryOpen && (
+        <>
+          <div className="sheet-backdrop" onClick={() => setEntryOpen(false)} />
+          <div className="sheet" role="dialog" aria-modal="true" aria-label="Saisie d’un plein">
+            <div className="sheet-handle" aria-hidden />
+            <FillupForm
+              vehicles={vehicles}
+              fillups={fillups}
+              defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
+              defaultEnergy={bootAction === 'recharge' ? 'electric' : undefined}
+              userEmail={userEmail}
+              showToast={showToast}
+              onSaved={(status, draft) => {
+                setEntryOpen(false)
+                showToast(
+                  status === 'queued'
+                    ? 'Enregistré sur le téléphone — synchronisation dès que possible'
+                    : draft
+                      ? 'Photo enregistrée — à compléter dans l’historique'
+                      : 'Plein enregistré ✓',
+                )
+                if (!draft) {
+                  const n = fillCount + 1
+                  setFillCount(n)
+                  localStorage.setItem(FILL_COUNT_KEY, String(n))
+                }
+                if (draft) setTab('history')
+                void refresh()
+              }}
+            />
+          </div>
+        </>
+      )}
 
       {toast && (
         <div className={`toast ${toast.kind}`}>

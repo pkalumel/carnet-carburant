@@ -6,17 +6,14 @@ import {
 } from '../lib/format'
 import type { Fillup, Vehicle } from '../lib/types'
 import AnimatedNumber from './AnimatedNumber'
-import FillupForm from './FillupForm'
 import QuickCapture from './QuickCapture'
 import { Meter } from './chartKit'
-import { BoltIcon, CameraIcon, HistoryIcon, PlusIcon, PumpIcon } from './icons'
+import { BoltIcon, CameraIcon, HistoryIcon, PumpIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
   /** Pleins filtrés par le chip véhicule : ce que l'accueil résume */
   fillups: Fillup[]
-  /** Liste complète, non filtrée : sert aux validations du formulaire */
-  allFillups: Fillup[]
   vehicleFilter: string
   userEmail: string | null
   showToast: (msg: string, kind?: 'ok' | 'err') => void
@@ -24,8 +21,6 @@ interface Props {
   onOpenHistory: () => void
   /** ouvre directement l'éditeur d'un brouillon dans l'Historique */
   onOpenDraft: (id: string) => void
-  /** raccourci PWA : ouvre la feuille de saisie dès l'arrivée */
-  autoOpenEntry?: boolean
 }
 
 const num = (v: number | null, digits: number) =>
@@ -52,20 +47,8 @@ function DraftThumb({ path }: { path: string | null }) {
 }
 
 export default function Home({
-  vehicles, fillups, allFillups, vehicleFilter, userEmail, showToast, onSaved, onOpenHistory, onOpenDraft,
-  autoOpenEntry,
+  vehicles, fillups, vehicleFilter, userEmail, showToast, onSaved, onOpenHistory, onOpenDraft,
 }: Props) {
-  const [entryOpen, setEntryOpen] = useState(autoOpenEntry ?? false)
-
-  // La feuille ouverte fige le défilement de la page derrière
-  useEffect(() => {
-    if (!entryOpen) return
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [entryOpen])
-
   const real = useMemo(() => fillups.filter((f) => !f.is_draft), [fillups])
   const drafts = useMemo(() => fillups.filter((f) => f.is_draft && !f.pending), [fillups])
 
@@ -167,9 +150,6 @@ export default function Home({
           onSaved={(status) => onSaved(status, true)}
           showToast={showToast}
         />
-        <button className="btn btn-primary" onClick={() => setEntryOpen(true)}>
-          <PlusIcon /> Saisir un plein
-        </button>
       </div>
 
       {drafts.length > 0 && (
@@ -256,29 +236,10 @@ export default function Home({
             <PumpIcon size={30} />
           </div>
           <div className="empty-title">Aucun plein pour l’instant</div>
-          Photographie la pompe avec le bouton Photo, ou saisis ton premier plein juste au-dessus.
+          Photographie la pompe avec le bouton Photo, ou saisis ton premier plein avec le « + » en bas de l’écran.
         </div>
       )}
 
-      {entryOpen && (
-        <>
-          <div className="sheet-backdrop" onClick={() => setEntryOpen(false)} />
-          <div className="sheet" role="dialog" aria-modal="true" aria-label="Saisie d’un plein">
-            <div className="sheet-handle" aria-hidden />
-            <FillupForm
-              vehicles={vehicles}
-              fillups={allFillups}
-              defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
-              userEmail={userEmail}
-              showToast={showToast}
-              onSaved={(status, draft) => {
-                setEntryOpen(false)
-                onSaved(status, draft)
-              }}
-            />
-          </div>
-        </>
-      )}
     </>
   )
 }
