@@ -820,10 +820,16 @@ nav.tabs .inner > button:not(.tab-plus):active,
 .nearby-map.tiles-osm .leaflet-tile-pane { filter: var(--map-filter, none); }
 .nearby-map.leaflet-container .leaflet-control-attribution {
   font-size: 9px;
-  background: var(--surface);
+  line-height: 1.5;
+  padding: 0 5px;
+  border-radius: 6px 0 0 0;
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
   color: var(--ink-64);
 }
-.nearby-map.leaflet-container .leaflet-control-attribution a { color: var(--ink-64); }
+.nearby-map.leaflet-container .leaflet-control-attribution a {
+  color: var(--ink-64);
+  text-decoration: none;
+}
 .nearby-map.leaflet-container .leaflet-bar {
   border: 1px solid var(--line);
   box-shadow: var(--shadow-card);

@@ -60,8 +60,12 @@ function tileLayer(theme: 'light' | 'dark'): L.TileLayer {
         maxZoom: 19,
         tileSize: 512,
         zoomOffset: -1,
+        // Les trois mentions exigées par les CGU Mapbox (le fond est bâti
+        // sur les données OpenStreetMap, sous licence ODbL)
         attribution:
-          '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> ' +
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+          '<a href="https://apps.mapbox.com/feedback/">Improve this map</a>',
       },
     )
   }
@@ -160,6 +164,7 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
       scrollWheelZoom: false, // le défilement de la page garde la main sur desktop
       attributionControl: true,
     })
+    map.attributionControl.setPrefix(false) // le crédit Leaflet n'est pas exigé
     tilesRef.current = tileLayer(theme).addTo(map)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
     // le point de position reste visible même sous un groupe d'épingles

@@ -571,20 +571,35 @@ if (createdTestFillup) {
   const { ctx, page } = await newSession()
   await goTab(page, 'historique')
   await page.waitForSelector('.history-list .fillup-item', { timeout: 8000 })
-  const testRow = page.locator('.history-list .swipe-row', { hasText: '99,00' }).first()
-  if (await testRow.count()) {
-    const tb = await testRow.boundingBox()
-    await swipeTouch(ctx, page, tb.x + tb.width - 40, tb.y + tb.height / 2, tb.x + 60, tb.y + tb.height / 2)
-    await page.waitForTimeout(300)
-    await testRow.locator('.swipe-delete').click()
-    await page.waitForTimeout(7500)
-    check(
-      'nettoyage : plein de test supprimé',
-      (await page.locator('.history-list', { hasText: '99,00' }).count()) === 0,
-    )
-  } else {
-    check('nettoyage : plein de test supprimé', true, 'déjà absent')
+  await page.waitForTimeout(1000)
+  const gone = () => page.locator('.history-list', { hasText: '99,00' }).count().then((n) => n === 0)
+  const testRow = () => page.locator('.history-list .swipe-row', { hasText: '99,00' }).first()
+
+  // 1er chemin : glissement → Supprimer (l'undo expire de lui-même)
+  if (!(await gone())) {
+    try {
+      const tb = await testRow().boundingBox()
+      await swipeTouch(ctx, page, tb.x + tb.width - 40, tb.y + tb.height / 2, tb.x + 60, tb.y + tb.height / 2)
+      await page.waitForTimeout(500)
+      await testRow().locator('.swipe-delete').click({ timeout: 4000 })
+      await page.waitForTimeout(8000)
+    } catch {
+      // le geste n'a pas pris : on passe par l'éditeur
+    }
   }
+  // 2e chemin : tap → éditeur → Supprimer (les données de test ne doivent
+  // JAMAIS survivre à une exécution du crawler)
+  if (!(await gone())) {
+    try {
+      await testRow().locator('.fillup-item').click({ timeout: 4000 })
+      await page.waitForSelector('.sheet', { timeout: 4000 })
+      await page.locator('.sheet .btn-delete').click({ timeout: 4000 })
+      await page.waitForTimeout(8000)
+    } catch {
+      // échec des deux chemins : l'assertion ci-dessous le signale
+    }
+  }
+  check('nettoyage : plein de test supprimé', await gone())
   await ctx.close()
 }
 
