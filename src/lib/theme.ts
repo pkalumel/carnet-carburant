@@ -29,6 +29,33 @@ function apply(pref: ThemePref) {
   }
 }
 
+/** Thème réellement appliqué (« auto » résolu), pour ce qui ne peut pas
+ *  passer par les tokens CSS — les tuiles de carte, par exemple. */
+export function useResolvedTheme(): 'light' | 'dark' {
+  const resolved = () => {
+    const t = document.documentElement.dataset.theme
+    return t === 'dark' || (t == null && systemDark()) ? 'dark' : 'light'
+  }
+  const [theme, setTheme] = useState<'light' | 'dark'>(resolved)
+
+  useEffect(() => {
+    const update = () => setTheme(resolved())
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', update)
+    // bascule depuis Réglages : data-theme change sur <html>
+    const obs = new MutationObserver(update)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => {
+      mq.removeEventListener('change', update)
+      obs.disconnect()
+    }
+    // resolved() ne dépend que du DOM : effet de montage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return theme
+}
+
 export function useTheme(): [ThemePref, (p: ThemePref) => void] {
   const [pref, setPref] = useState<ThemePref>(getThemePref)
 

@@ -26,8 +26,8 @@ export interface NearbyPlace {
   prices?: { label: string; price: number }[]
 }
 
-const RADIUS_KM = 5
-const MAX_RESULTS = 12
+const RADIUS_KM = 10
+const MAX_RESULTS = 20
 const CACHE_TTL_MS = 10 * 60 * 1000
 
 export function haversineKm(a: GeoPoint, b: GeoPoint): number {
@@ -46,7 +46,8 @@ export const fmtDist = (km: number) =>
 /** Cache de session par source et position arrondie (~500 m) : évite de
  * marteler les API publiques à chaque retour sur l'accueil. */
 function cacheKey(source: string, p: GeoPoint) {
-  return `carnet:nearby:${source}:${p.lat.toFixed(2)},${p.lng.toFixed(2)}`
+  // le rayon fait partie de la clé : changer la portée invalide le cache
+  return `carnet:nearby:${source}:r${RADIUS_KM}:${p.lat.toFixed(2)},${p.lng.toFixed(2)}`
 }
 function readCache(key: string): NearbyPlace[] | null {
   try {

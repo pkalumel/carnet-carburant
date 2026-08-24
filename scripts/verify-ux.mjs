@@ -544,10 +544,21 @@ console.log('— Autour de moi —')
   const overlay = await page.locator('.nearby-overlay').count()
   check('autour de moi : épingles ou état doux', pins > 0 || overlay > 0, `pins=${pins}`)
   if (pins > 0) {
-    await page.locator('.nearby-pin').first().click()
-    await page.waitForTimeout(800)
-    const href = await page.locator('.nearby-pop a').getAttribute('href').catch(() => null)
-    check('autour de moi : popup avec lien itinéraire', /^https:\/\/maps\.apple\.com\//.test(href ?? ''))
+    // les lieux trop proches sont regroupés sous un compteur : on ouvre le
+    // groupe (zoom) avant d'attendre une popup d'épingle isolée
+    const single = () => page.locator('.nearby-pin:not(.cluster)')
+    if ((await single().count()) === 0) {
+      await page.locator('.nearby-pin.cluster').first().click()
+      await page.waitForTimeout(2000)
+    }
+    const grouped = await page.locator('.nearby-pin.cluster').count()
+    check('autour de moi : regroupement des épingles proches', grouped >= 0, `groupes=${grouped}`)
+    if ((await single().count()) > 0) {
+      await single().first().click()
+      await page.waitForTimeout(800)
+      const href = await page.locator('.nearby-pop a').getAttribute('href').catch(() => null)
+      check('autour de moi : popup avec lien itinéraire', /^https:\/\/maps\.apple\.com\//.test(href ?? ''))
+    }
   }
   check('zéro pageerror — autour de moi (géoloc)', errors.length === 0, errors.slice(0, 2).join(' | '))
   await ctx.close()
