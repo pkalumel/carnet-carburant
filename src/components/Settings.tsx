@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { useTheme, type ThemePref } from '../lib/theme'
 import type { Fillup, Vehicle } from '../lib/types'
 import VehicleManager from './VehicleManager'
 import ShareManager from './ShareManager'
@@ -43,6 +44,7 @@ function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
 }
 
 export default function Settings({ vehicles, fillups, userId, userEmail, onChanged, showToast }: Props) {
+  const [theme, setTheme] = useTheme()
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const realCount = fillups.filter((f) => !f.is_draft).length
@@ -103,6 +105,30 @@ export default function Settings({ vehicles, fillups, userId, userEmail, onChang
         showToast={showToast}
         onChanged={onChanged}
       />
+
+      <section className="card">
+        <h2>Apparence</h2>
+        <div className="seg" role="radiogroup" aria-label="Thème">
+          {(
+            [
+              ['auto', 'Auto'],
+              ['light', 'Clair'],
+              ['dark', 'Sombre'],
+            ] as [ThemePref, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              className={theme === value ? 'active' : ''}
+              onClick={() => setTheme(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="settings-note" style={{ marginTop: 10, marginBottom: 0 }}>
+          « Auto » suit le réglage clair/sombre du téléphone.
+        </p>
+      </section>
 
       <section className="card">
         <h2>Compte</h2>

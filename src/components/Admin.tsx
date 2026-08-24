@@ -6,7 +6,7 @@ import {
   adminAccountAction, fetchHealth, fetchOverview, fetchUserDetail, fetchUsers,
 } from '../lib/adminDb'
 import type { AdminHealth, AdminOverview, AdminUserDetail, AdminUserRow } from '../lib/adminDb'
-import { AXIS, GRID, SERIES } from '../lib/chartTheme'
+import { AXIS, CURSOR, GRID, SERIES } from '../lib/chartTheme'
 import { Tip } from './chartKit'
 import { fmtBytes, fmtDate, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters } from '../lib/format'
 import { BoltIcon, PumpIcon, TrashIcon, XIcon } from './icons'
@@ -112,7 +112,7 @@ function WeeklyMini({ title, points, color, noun }: {
             width={36}
             allowDecimals={false}
           />
-          <Tooltip content={<Tip />} cursor={{ fill: 'rgba(22, 32, 43, 0.06)' }} />
+          <Tooltip content={<Tip />} cursor={{ fill: CURSOR }} />
           <Bar dataKey="n" fill={color} maxBarSize={22} radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>

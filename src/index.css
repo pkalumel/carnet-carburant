@@ -7,8 +7,10 @@
    ============================================================ */
 
 :root {
+  color-scheme: light dark;
   --bg: #f3f1ec;
   --surface: #ffffff;
+  --field: #faf9f6;
   --ink: #16202b;
   --ink-80: rgba(22, 32, 43, 0.8);
   --ink-64: rgba(22, 32, 43, 0.64);
@@ -16,9 +18,38 @@
   --accent: #f0b429;
   --accent-press: #dd9f0e;
   --accent-soft: rgba(240, 180, 41, 0.16);
+  --on-accent: #16202b;
   --ok: #2e7d5b;
+  --ok-soft: rgba(46, 125, 91, 0.12);
   --danger: #b3402f;
+  --danger-soft: rgba(179, 64, 47, 0.06);
+  --danger-line: rgba(179, 64, 47, 0.35);
   --line: rgba(22, 32, 43, 0.1);
+  /* Surfaces encre (hero, boutons primaires, nav, toasts) et leur texte :
+     en sombre elles deviennent des surfaces élevées, pas du noir */
+  --hero-bg: #16202b;
+  --on-ink: #ffffff;
+  --on-ink-70: rgba(255, 255, 255, 0.7);
+  --on-ink-60: rgba(255, 255, 255, 0.6);
+  --on-ink-55: rgba(255, 255, 255, 0.55);
+  --on-ink-12: rgba(255, 255, 255, 0.12);
+  --on-ink-08: rgba(255, 255, 255, 0.08);
+  --topbar-bg: rgba(243, 241, 236, 0.88);
+  --focus-ring: rgba(240, 180, 41, 0.55);
+  --scrim: rgba(22, 32, 43, 0.5);
+  --halo: rgba(240, 180, 41, 0.28);
+  /* Graphes (consommés par chartTheme.ts via var()) */
+  --chart-grid: #e4e2da;
+  --chart-axis: #6e7781;
+  --chart-cursor: rgba(38, 48, 60, 0.06);
+  --chart-s1: #26303c;
+  --chart-s2: #dd9f0e;
+  --chart-s3: #4a6fa5;
+  --chart-s4: #2e7d5b;
+  --chart-s5: #b3402f;
+  --chart-s6: #7d5ba6;
+  --tip-bg: #16202b;
+  --tip-fg: #ffffff;
   --radius: 20px;
   --radius-sm: 12px;
   /* Ombres teintées de la couleur du papier, jamais gris pur */
@@ -26,6 +57,101 @@
   --shadow-float: 0 4px 12px rgba(22, 32, 43, 0.16), 0 18px 44px rgba(22, 32, 43, 0.22);
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ------------------------------------------------------------
+   Mode sombre — conçu dark-first (maquettes Figma validées) :
+   pétrole remonté, surfaces élevées, blanc chaud, jaune assombri.
+   Suit le système par défaut ; data-theme (Réglages) force un mode.
+   ------------------------------------------------------------ */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b2733;
+    --surface: #223140;
+    --field: #263646;
+    --ink: #efe9dc;
+    --ink-80: rgba(239, 233, 220, 0.8);
+    --ink-64: rgba(239, 233, 220, 0.64);
+    --ink-08: rgba(239, 233, 220, 0.08);
+    --accent: #d99e1f;
+    --accent-press: #c08a15;
+    --accent-soft: rgba(217, 158, 31, 0.18);
+    --ok: #4a9d77;
+    --ok-soft: rgba(74, 157, 119, 0.2);
+    --danger: #cf6a56;
+    --danger-soft: rgba(207, 106, 86, 0.14);
+    --danger-line: rgba(207, 106, 86, 0.45);
+    --line: rgba(239, 233, 220, 0.12);
+    --hero-bg: #2a3a4b;
+    --on-ink: #efe9dc;
+    --on-ink-70: rgba(239, 233, 220, 0.7);
+    --on-ink-60: rgba(239, 233, 220, 0.6);
+    --on-ink-55: rgba(239, 233, 220, 0.55);
+    --on-ink-12: rgba(239, 233, 220, 0.12);
+    --on-ink-08: rgba(239, 233, 220, 0.08);
+    --topbar-bg: rgba(27, 39, 51, 0.88);
+    --focus-ring: rgba(217, 158, 31, 0.5);
+    --scrim: rgba(0, 0, 0, 0.6);
+    --halo: rgba(217, 158, 31, 0.22);
+    --chart-grid: #33424f;
+    --chart-axis: #8b98a5;
+    --chart-cursor: rgba(239, 233, 220, 0.06);
+    --chart-s1: #c9d6e4;
+    --chart-s2: #d99e1f;
+    --chart-s3: #7ba3d4;
+    --chart-s4: #4a9d77;
+    --chart-s5: #cf6a56;
+    --chart-s6: #a98cc9;
+    --tip-bg: #efe9dc;
+    --tip-fg: #16202b;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.3);
+    --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4), 0 18px 44px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b2733;
+  --surface: #223140;
+  --field: #263646;
+  --ink: #efe9dc;
+  --ink-80: rgba(239, 233, 220, 0.8);
+  --ink-64: rgba(239, 233, 220, 0.64);
+  --ink-08: rgba(239, 233, 220, 0.08);
+  --accent: #d99e1f;
+  --accent-press: #c08a15;
+  --accent-soft: rgba(217, 158, 31, 0.18);
+  --ok: #4a9d77;
+  --ok-soft: rgba(74, 157, 119, 0.2);
+  --danger: #cf6a56;
+  --danger-soft: rgba(207, 106, 86, 0.14);
+  --danger-line: rgba(207, 106, 86, 0.45);
+  --line: rgba(239, 233, 220, 0.12);
+  --hero-bg: #2a3a4b;
+  --on-ink: #efe9dc;
+  --on-ink-70: rgba(239, 233, 220, 0.7);
+  --on-ink-60: rgba(239, 233, 220, 0.6);
+  --on-ink-55: rgba(239, 233, 220, 0.55);
+  --on-ink-12: rgba(239, 233, 220, 0.12);
+  --on-ink-08: rgba(239, 233, 220, 0.08);
+  --topbar-bg: rgba(27, 39, 51, 0.88);
+  --focus-ring: rgba(217, 158, 31, 0.5);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --halo: rgba(217, 158, 31, 0.22);
+  --chart-grid: #33424f;
+  --chart-axis: #8b98a5;
+  --chart-cursor: rgba(239, 233, 220, 0.06);
+  --chart-s1: #c9d6e4;
+  --chart-s2: #d99e1f;
+  --chart-s3: #7ba3d4;
+  --chart-s4: #4a9d77;
+  --chart-s5: #cf6a56;
+  --chart-s6: #a98cc9;
+  --tip-bg: #efe9dc;
+  --tip-fg: #16202b;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.3);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.4), 0 18px 44px rgba(0, 0, 0, 0.5);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -54,7 +180,7 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(243, 241, 236, 0.88);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: calc(12px + env(safe-area-inset-top)) 16px 0;
@@ -80,7 +206,7 @@ html, body {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: var(--ink);
+  background: var(--hero-bg);
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -142,7 +268,7 @@ html, body {
 .chip.active {
   background: var(--ink);
   border-color: var(--ink);
-  color: #fff;
+  color: var(--bg); /* pilule inversée : texte papier en clair, pétrole en sombre */
 }
 /* Icône dans une pastille (choix carburant / recharge) */
 .chip svg { vertical-align: -3px; margin-right: 4px; }
@@ -162,9 +288,9 @@ html, body {
   font-weight: 600;
   text-align: center;
 }
-.netbanner.offline { background: var(--accent); color: var(--ink); }
+.netbanner.offline { background: var(--accent); color: var(--on-accent); }
 .netbanner.pending { background: var(--accent-soft); color: var(--ink-80); }
-.netbanner.update { background: var(--ink); color: #fff; width: calc(100% - 32px); }
+.netbanner.update { background: var(--hero-bg); color: var(--on-ink); width: calc(100% - 32px); }
 /* Bannière tappable : un raccourci, pas une consigne */
 button.banner-action {
   border: none;
@@ -203,20 +329,20 @@ main.content {
 
 /* Carte héros sombre (résumé des stats) : l'inverse de la page */
 .card.hero {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
+  background: var(--hero-bg);
+  border-color: var(--hero-bg);
+  color: var(--on-ink);
   box-shadow: var(--shadow-float);
 }
-.card.hero h2 { color: rgba(255, 255, 255, 0.6); }
-.card.hero .meter-big { color: #fff; }
-.card.hero .meter-unit, .card.hero .meter-label { color: rgba(255, 255, 255, 0.6); }
+.card.hero h2 { color: var(--on-ink-60); }
+.card.hero .meter-big { color: var(--on-ink); }
+.card.hero .meter-unit, .card.hero .meter-label { color: var(--on-ink-60); }
 .card.hero .meter-big.lead { font-size: 40px; color: var(--accent); }
 /* Variante claire du chiffre héros (accueil) : accent foncé, lisible sur blanc */
 .card:not(.hero) .meter-big.lead { font-size: 40px; color: var(--accent-press); }
 .card.hero .hero-note {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--on-ink-70);
   margin: 16px 0 0;
 }
 
@@ -275,7 +401,7 @@ input[type="password"], input[type="datetime-local"], textarea, select.input {
   width: 100%;
   border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #faf9f6;
+  background: var(--field);
   color: var(--ink);
   padding: 12px;
   font-size: 17px;
@@ -298,12 +424,12 @@ input::-webkit-date-and-time-value {
   text-align: left;
 }
 input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
-  outline: 3px solid rgba(240, 180, 41, 0.55);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
 }
 input:focus-visible, textarea:focus-visible, select.input:focus-visible {
   border-color: var(--accent);
-  background: #fff;
+  background: var(--surface);
 }
 .field-grid {
   display: grid;
@@ -323,9 +449,9 @@ input:focus-visible, textarea:focus-visible, select.input:focus-visible {
   margin: 8px 0 12px;
   border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #faf9f6;
+  background: var(--field);
 }
-.vehicle-editor input[type="text"] { background: #fff; }
+.vehicle-editor input[type="text"] { background: var(--surface); }
 
 /* Erreurs et aides inline sous les champs */
 input.error { border-color: var(--danger); }
@@ -416,10 +542,10 @@ button { font-family: var(--sans); cursor: pointer; }
 .btn-icon:active { background: var(--ink-08); }
 .btn:active { transform: scale(0.98); }
 .btn-primary {
-  background: var(--ink);
-  color: #fff;
+  background: var(--hero-bg);
+  color: var(--on-ink);
   /* liseré blanc interne : relief discret */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 var(--on-ink-12);
 }
 
 /* Capture rapide : LE geste de l'app, carte héros tactile */
@@ -443,7 +569,7 @@ button { font-family: var(--sans); cursor: pointer; }
   height: 52px;
   border-radius: 16px;
   background: linear-gradient(160deg, #ffd35c 0%, var(--accent) 60%, var(--accent-press) 100%);
-  color: var(--ink);
+  color: var(--on-accent);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -480,13 +606,13 @@ button { font-family: var(--sans); cursor: pointer; }
   gap: 8px;
 }
 .btn-ghost:active { background: var(--ink-08); }
-.btn-danger { border-color: rgba(179, 64, 47, 0.3); color: var(--danger); }
+.btn-danger { border-color: var(--danger-line); color: var(--danger); }
 .btn:disabled, .btn-capture:disabled, .btn-ghost:disabled { opacity: 0.45; cursor: default; }
 
 /* Zone de confirmation d'une suppression définitive */
 .danger-zone {
-  border: 1.5px solid rgba(179, 64, 47, 0.35);
-  background: rgba(179, 64, 47, 0.06);
+  border: 1.5px solid var(--danger-line);
+  background: var(--danger-soft);
   border-radius: var(--radius-sm);
   padding: 16px;
   margin: 4px 0 12px;
@@ -626,10 +752,10 @@ button { font-family: var(--sans); cursor: pointer; }
   vertical-align: 2px;
   margin-left: 6px;
 }
-.badge-draft { background: var(--accent); color: var(--ink); }
+.badge-draft { background: var(--accent); color: var(--on-accent); }
 .badge-partial { background: var(--ink-08); color: var(--ink-80); }
 .badge-pending { background: var(--ink-08); color: var(--ink-80); border: 1px dashed var(--ink-64); }
-.badge-elec { background: rgba(46, 125, 91, 0.12); color: #2e7d5b; }
+.badge-elec { background: var(--ok-soft); color: var(--ok); }
 
 /* ---------- Navigation basse flottante ---------- */
 nav.tabs {
@@ -647,7 +773,7 @@ nav.tabs .inner {
   display: flex;
   width: 100%;
   max-width: 528px;
-  background: var(--ink);
+  background: var(--hero-bg);
   border-radius: 24px;
   padding: 6px;
   box-shadow: var(--shadow-float);
@@ -657,7 +783,7 @@ nav.tabs button {
   background: none;
   border: none;
   border-radius: 18px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--on-ink-55);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -674,7 +800,7 @@ nav.tabs button {
 nav.tabs button .ico { line-height: 0; display: block; }
 nav.tabs button.active {
   color: var(--accent);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--on-ink-08);
 }
 
 /* ---------- États vides : guider, pas constater ---------- */
@@ -723,7 +849,7 @@ nav.tabs button.active {
 }
 .seg button.active {
   background: var(--ink);
-  color: #fff;
+  color: var(--bg); /* pilule inversée */
 }
 
 /* Légende des séries */
@@ -772,7 +898,7 @@ nav.tabs button.active {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(22, 32, 43, 0.5);
+  background: var(--scrim);
 }
 .sheet {
   position: fixed;
@@ -829,8 +955,8 @@ nav.tabs button.active {
   bottom: calc(96px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: #fff;
+  background: var(--hero-bg);
+  color: var(--on-ink);
   border-radius: var(--radius-sm);
   padding: 12px 20px;
   font-size: 14px;
@@ -875,7 +1001,7 @@ nav.tabs button.active {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(240, 180, 41, 0.28) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--halo) 0%, transparent 70%);
   pointer-events: none;
 }
 .auth-logo img { width: 84px; height: 84px; border-radius: 24px; position: relative; box-shadow: var(--shadow-card); }
@@ -1080,8 +1206,8 @@ html, body { overscroll-behavior-y: none; }
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--ink);
-  color: #fff;
+  background: var(--hero-bg);
+  color: var(--on-ink);
   padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
   box-shadow: var(--shadow-float);
 }
@@ -1104,13 +1230,13 @@ html, body { overscroll-behavior-y: none; }
 }
 .page-modal-top .subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--on-ink-60);
   margin-top: 3px;
 }
 .page-modal-top .badge-pending {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.6);
+  background: var(--on-ink-12);
+  color: var(--on-ink);
+  border-color: var(--on-ink-60);
 }
 .page-modal-close {
   margin-left: auto;
@@ -1121,11 +1247,11 @@ html, body { overscroll-behavior-y: none; }
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--on-ink-08);
   border: none;
-  color: #fff;
+  color: var(--on-ink);
 }
-.page-modal-close:active { background: rgba(255, 255, 255, 0.22); }
+.page-modal-close:active { background: var(--on-ink-12); }
 .page-modal-body {
   max-width: 640px;
   margin: 0 auto;

@@ -22,7 +22,7 @@ export function Tip({ active, payload }: { active?: boolean; payload?: TipPayloa
   return (
     <div
       style={{
-        background: '#16202b', color: '#fff', borderRadius: 8, padding: '6px 10px',
+        background: 'var(--tip-bg)', color: 'var(--tip-fg)', borderRadius: 8, padding: '6px 10px',
         fontSize: 13, fontFamily: 'var(--mono)', whiteSpace: 'pre-line',
       }}
     >

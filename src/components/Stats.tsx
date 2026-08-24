@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { consumptionSeries, monthlyCostsByVehicle, priceSeries, summarize } from '../lib/stats'
 import { fmtConso, fmtConsoElec, fmtEur, fmtKm, fmtPricePerKwh, fmtPricePerL } from '../lib/format'
-import { AXIS, GRID, SERIES } from '../lib/chartTheme'
+import { ACTIVE_DOT, AXIS, CURSOR, GRID, SERIES } from '../lib/chartTheme'
 import { Meter, Tip } from './chartKit'
 import type { Fillup, Vehicle } from '../lib/types'
 
@@ -162,7 +162,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -177,7 +177,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -191,7 +191,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} />
-              <Tooltip content={<Tip />} cursor={{ fill: 'rgba(38, 48, 60, 0.06)' }} />
+              <Tooltip content={<Tip />} cursor={{ fill: CURSOR }} />
               {(singleVehicle ? vehicles.filter((v) => v.id === vehicleFilter) : stackedVehicles).map((v, i, arr) => (
                 <Bar
                   key={v.id}
@@ -227,7 +227,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(2)} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -242,7 +242,7 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(2)} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: '#dd9f0e' }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
         </section>
