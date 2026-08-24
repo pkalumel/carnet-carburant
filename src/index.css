@@ -951,11 +951,14 @@ nav.tabs .inner {
   pointer-events: auto;
   display: flex;
   justify-content: center;
+  align-items: center;
   width: 100%;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  border-radius: 16px 16px 0 0;
-  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  border-radius: 0;
+  /* barre au ras de l'écran : le contenu se centre sur sa ligne médiane —
+     une partie de la safe-area est absorbée (l'indicateur iOS reste libre) */
+  padding: 14px 10px max(calc(env(safe-area-inset-bottom) - 16px), 14px);
   box-shadow: var(--shadow-float);
 }
 /* Les onglets ne s'étirent pas à l'infini sur grand écran */
@@ -985,7 +988,7 @@ nav.tabs button.tab-plus {
   width: 56px;
   height: 56px;
   min-height: 56px;
-  margin: -18px 6px 0;
+  margin: -34px 6px 0;
   border-radius: 16px;
   background: var(--accent);
   color: var(--on-accent);
@@ -999,7 +1002,7 @@ nav.tabs button.tab-plus {
 }
 nav.tabs button.tab-plus:active { transform: scale(0.94); }
 @media (max-width: 359px) {
-  nav.tabs button.tab-plus { width: 52px; height: 52px; min-height: 52px; margin-top: -16px; border-radius: 14px; }
+  nav.tabs button.tab-plus { width: 52px; height: 52px; min-height: 52px; margin-top: -30px; border-radius: 14px; }
 }
 nav.tabs button.active {
   color: var(--accent-text);
