@@ -33,8 +33,8 @@ const isActive = (lastFillup: string | null) =>
   lastFillup != null && Date.now() - new Date(lastFillup).getTime() < 30 * DAY_MS
 
 function StatusBadge({ u }: { u: AdminUserRow }) {
-  if (isBanned(u.banned_until)) return <span className="badge badge-pending">Banni</span>
-  if (u.is_admin) return <span className="badge badge-draft">Admin</span>
+  if (isBanned(u.banned_until)) return <span className="badge badge-danger">Banni</span>
+  if (u.is_admin) return <span className="badge badge-accent">Admin</span>
   if (isActive(u.last_fillup_at)) return <span className="badge badge-elec">Actif</span>
   return <span className="badge badge-partial">Dormant</span>
 }

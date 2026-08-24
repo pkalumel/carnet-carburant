@@ -817,6 +817,8 @@ nav.tabs .inner > button:not(.tab-plus):active,
 .badge-partial { background: var(--ink-08); color: var(--ink-80); }
 .badge-pending { background: var(--ink-08); color: var(--ink-80); border: 1px dashed var(--ink-64); }
 .badge-elec { background: var(--ok-soft); color: var(--ok); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.badge-accent { background: var(--accent-soft); color: var(--accent-press); }
 
 /* ---------- Navigation basse flottante ---------- */
 nav.tabs {
@@ -1643,6 +1645,14 @@ input.suggested { color: var(--ink-64); }
 }
 @media (min-width: 980px) {
   .admin-toolbar select.admin-sort { display: none; }
+  /* Recherche + filtres restent visibles au défilement du tableau */
+  .admin-toolbar {
+    position: sticky;
+    top: 56px;
+    z-index: 15;
+    background: var(--bg);
+    padding: 8px 0;
+  }
 }
 
 /* ---------- Micro-animations ---------- */
