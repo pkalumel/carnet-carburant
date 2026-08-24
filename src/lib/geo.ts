@@ -1,3 +1,5 @@
+import { logApi } from './apiLog'
+
 /**
  * Localisation d'une saisie : optionnelle et JAMAIS bloquante.
  * Refus de permission, temps dépassé ou hors-ligne → null, sans erreur.
@@ -27,6 +29,7 @@ export function captureLocation(timeoutMs = 8000): Promise<GeoPoint | null> {
  * Usage léger conforme à leur politique ; null si hors-ligne ou en échec.
  */
 export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
+  const start = performance.now()
   try {
     const ctrl = new AbortController()
     const t = window.setTimeout(() => ctrl.abort(), 4000)
@@ -35,6 +38,7 @@ export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
       { signal: ctrl.signal, headers: { Accept: 'application/json' } },
     )
     window.clearTimeout(t)
+    logApi('nominatim', res.ok, res.status, performance.now() - start)
     if (!res.ok) return null
     const data = (await res.json()) as {
       name?: string
@@ -47,6 +51,7 @@ export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
     const label = [poi || road, city].filter(Boolean).join(', ')
     return label || null
   } catch {
+    logApi('nominatim', false, null, performance.now() - start)
     return null
   }
 }

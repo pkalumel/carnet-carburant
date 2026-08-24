@@ -3,9 +3,9 @@ import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import {
-  adminAccountAction, fetchHealth, fetchOverview, fetchUserDetail, fetchUsers,
+  adminAccountAction, fetchApiStats, fetchHealth, fetchOverview, fetchUserDetail, fetchUsers,
 } from '../lib/adminDb'
-import type { AdminHealth, AdminOverview, AdminUserDetail, AdminUserRow } from '../lib/adminDb'
+import type { AdminApiStats, AdminHealth, AdminOverview, AdminUserDetail, AdminUserRow } from '../lib/adminDb'
 import { AXIS, CURSOR, GRID, SERIES } from '../lib/chartTheme'
 import { Tip } from './chartKit'
 import { fmtBytes, fmtDate, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters } from '../lib/format'
@@ -83,16 +83,18 @@ function KpiStrip({ overview, health }: { overview: AdminOverview; health: Admin
 
 // ---------- Colonne latérale : graphes + santé ----------
 
-function WeeklyMini({ title, points, color, noun }: {
+function WeeklyMini({ title, points, color, noun, daily = false }: {
   title: string
   points: { week: string; n: number }[]
   color: string
   noun: string
+  /** points quotidiens (l'infobulle dit « Le … » plutôt que « Semaine du … ») */
+  daily?: boolean
 }) {
   const data = points.map((p) => ({
     label: weekLabel(p.week),
     n: p.n,
-    tip: `Semaine du ${weekLabel(p.week)}\n${nf0.format(p.n)} ${noun}`,
+    tip: `${daily ? 'Le' : 'Semaine du'} ${weekLabel(p.week)}\n${nf0.format(p.n)} ${noun}`,
   }))
   return (
     <section className="card">
@@ -119,6 +121,50 @@ function WeeklyMini({ title, points, color, noun }: {
         </BarChart>
       </ResponsiveContainer>
     </section>
+  )
+}
+
+/** Journal des appels aux API externes tracés par les clients */
+function ApiCallsCard({ stats }: { stats: AdminApiStats }) {
+  const days = stats.days.map((d) => ({ week: d.day, n: d.calls }))
+  const totalErrors = stats.apis.reduce((s, a) => s + a.errors, 0)
+  return (
+    <>
+      {days.length > 0 && (
+        <WeeklyMini title="Appels API / jour" points={days} color={SERIES[2]} noun="appels" daily />
+      )}
+      <section className="card">
+        <h2>API externes · 7 jours</h2>
+        {stats.apis.length === 0 && (
+          <div className="settings-note">Aucun appel tracé pour l'instant.</div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {stats.apis.map((a) => {
+            const errPct = a.calls > 0 ? Math.round((a.errors / a.calls) * 100) : 0
+            return (
+              <div key={a.api} className="admin-health-row api-row">
+                <span className="api-name">
+                  {a.api}
+                  <span className="api-sub">{nf0.format(a.calls_24h)} sur 24 h</span>
+                </span>
+                <span
+                  className="admin-num"
+                  style={a.errors > 0 ? { color: 'var(--danger)', fontWeight: 700 } : undefined}
+                >
+                  {nf0.format(a.calls)} · {errPct} %
+                  {a.avg_ms != null && ` · ${nf0.format(a.avg_ms)} ms`}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {totalErrors === 0 && stats.apis.length > 0 && (
+          <div className="settings-note" style={{ marginTop: 10, marginBottom: 0 }}>
+            Aucune erreur sur la période.
+          </div>
+        )}
+      </section>
+    </>
   )
 }
 
@@ -361,6 +407,7 @@ function SortTh({ label, k, sort, dir, onSort, align }: {
 export default function Admin({ showToast, onBack }: Props) {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [health, setHealth] = useState<AdminHealth | null>(null)
+  const [apiStats, setApiStats] = useState<AdminApiStats | null>(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'all' | 'active' | 'dormant'>('all')
   const [sort, setSort] = useState<SortKey>('activity')
@@ -375,6 +422,7 @@ export default function Admin({ showToast, onBack }: Props) {
   useEffect(() => {
     fetchOverview().then(setOverview).catch((e: Error) => showToast(e.message, 'err'))
     fetchHealth().then(setHealth).catch((e: Error) => showToast(e.message, 'err'))
+    fetchApiStats().then(setApiStats).catch(() => undefined)
   }, [showToast])
 
   const load = useCallback(
@@ -412,6 +460,7 @@ export default function Admin({ showToast, onBack }: Props) {
     void load(0)
     fetchHealth().then(setHealth).catch(() => undefined)
     fetchOverview().then(setOverview).catch(() => undefined)
+    fetchApiStats().then(setApiStats).catch(() => undefined)
   }
 
   return (
@@ -549,6 +598,7 @@ export default function Admin({ showToast, onBack }: Props) {
             </>
           )}
           {health && <HealthCard health={health} />}
+          {apiStats && <ApiCallsCard stats={apiStats} />}
         </div>
       </div>
 

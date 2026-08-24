@@ -1595,6 +1595,23 @@ input.suggested { color: var(--ink-64); }
 .card.admin-kpis > div:last-child { border-right: none; }
 .card.admin-kpis .meter-big { font-size: 24px; }
 
+/* Journal des API externes : nom + volume 24 h à gauche, agrégats à droite */
+.api-row { align-items: flex-start; }
+.api-row .api-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-family: var(--mono);
+  font-size: 13px;
+  min-width: 0;
+}
+.api-row .api-sub {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-64);
+}
+.api-row .admin-num { white-space: nowrap; flex: none; }
+
 /* Retour vers Réglages : l'admin n'a plus d'onglet dans la barre */
 .admin-back { display: flex; }
 .admin-back .btn-ghost { padding-left: 10px; padding-right: 14px; }

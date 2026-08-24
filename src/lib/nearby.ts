@@ -1,3 +1,4 @@
+import { logApi } from './apiLog'
 import type { GeoPoint } from './geo'
 
 /**
@@ -65,13 +66,23 @@ function writeCache(key: string, places: NearbyPlace[]) {
   }
 }
 
-async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 8000): Promise<unknown> {
+async function fetchJson(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 8000,
+  api?: string,
+): Promise<unknown> {
   const ctrl = new AbortController()
   const t = window.setTimeout(() => ctrl.abort(), timeoutMs)
+  const start = performance.now()
   try {
     const res = await fetch(url, { ...init, signal: ctrl.signal })
+    if (api) logApi(api, res.ok, res.status, performance.now() - start)
     if (!res.ok) return null
     return await res.json()
+  } catch (e) {
+    if (api) logApi(api, false, null, performance.now() - start)
+    throw e
   } finally {
     window.clearTimeout(t)
   }
@@ -94,7 +105,7 @@ async function fetchFuelStationsOsm(p: GeoPoint): Promise<NearbyPlace[]> {
         method: 'POST',
         body: `data=${encodeURIComponent(query)}`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      })) as { elements?: { id: number; lat: number; lon: number; tags?: Record<string, string> }[] } | null
+      }, 8000, 'overpass')) as { elements?: { id: number; lat: number; lon: number; tags?: Record<string, string> }[] } | null
       if (!data?.elements) continue
       const places = data.elements
         .map((e) => ({
@@ -128,7 +139,7 @@ async function fetchChargersOcm(p: GeoPoint): Promise<NearbyPlace[]> {
     const url =
       `https://api.openchargemap.io/v3/poi?output=json&latitude=${p.lat}&longitude=${p.lng}` +
       `&distance=${RADIUS_KM}&distanceunit=km&maxresults=20&compact=true&verbose=false&key=${apiKey}`
-    const data = (await fetchJson(url)) as
+    const data = (await fetchJson(url, {}, 8000, 'open-charge-map')) as
       | {
           ID: number
           AddressInfo?: { Title?: string; Latitude?: number; Longitude?: number }
@@ -195,7 +206,8 @@ async function hereBrowse(p: GeoPoint, category: string, key: string, show?: str
     `&in=circle:${p.lat},${p.lng};r=${RADIUS_KM * 1000}&categories=${category}` +
     (show ? `&show=${show}` : '') +
     `&limit=20&apiKey=${key}`
-  const data = (await fetchJson(url)) as { items?: HereBrowseItem[] } | null
+  const api = show === 'ev' ? 'here-browse-ev' : 'here-browse-fuel'
+  const data = (await fetchJson(url, {}, 8000, api)) as { items?: HereBrowseItem[] } | null
   return data?.items ?? []
 }
 
@@ -263,7 +275,7 @@ async function fetchFuelStationsHere(p: GeoPoint, key: string): Promise<NearbyPl
   const url =
     `https://fuel.hereapi.com/v3/stations?in=circle:${p.lat},${p.lng};r=${RADIUS_KM * 1000}` +
     `&apiKey=${key}`
-  const data = (await fetchJson(url)) as {
+  const data = (await fetchJson(url, {}, 8000, 'here-fuel-v3')) as {
     stations?: {
       id?: string
       name?: string

@@ -78,6 +78,18 @@ export interface AdminHealth {
   orphan_vehicles: number
 }
 
+export interface AdminApiStats {
+  apis: {
+    api: string
+    calls: number
+    errors: number
+    avg_ms: number | null
+    calls_24h: number
+    errors_24h: number
+  }[]
+  days: { day: string; calls: number; errors: number }[]
+}
+
 export interface AdminUsersQuery {
   search?: string
   status?: 'all' | 'active' | 'dormant'
@@ -98,6 +110,12 @@ export async function checkIsAdmin(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export async function fetchApiStats(): Promise<AdminApiStats> {
+  const { data, error } = await supabase.rpc('admin_api_stats')
+  if (error) throw new Error(`Journal des API impossible : ${error.message}`)
+  return data as AdminApiStats
 }
 
 export async function fetchOverview(): Promise<AdminOverview> {
