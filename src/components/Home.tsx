@@ -24,6 +24,8 @@ interface Props {
   onOpenHistory: () => void
   /** ouvre directement l'éditeur d'un brouillon dans l'Historique */
   onOpenDraft: (id: string) => void
+  /** raccourci PWA : ouvre la feuille de saisie dès l'arrivée */
+  autoOpenEntry?: boolean
 }
 
 const num = (v: number | null, digits: number) =>
@@ -51,8 +53,9 @@ function DraftThumb({ path }: { path: string | null }) {
 
 export default function Home({
   vehicles, fillups, allFillups, vehicleFilter, userEmail, showToast, onSaved, onOpenHistory, onOpenDraft,
+  autoOpenEntry,
 }: Props) {
-  const [entryOpen, setEntryOpen] = useState(false)
+  const [entryOpen, setEntryOpen] = useState(autoOpenEntry ?? false)
 
   // La feuille ouverte fige le défilement de la page derrière
   useEffect(() => {

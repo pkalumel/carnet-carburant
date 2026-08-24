@@ -22,6 +22,22 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
+        // Appui long sur l'icône (Android/desktop) : entrées rapides
+        shortcuts: [
+          {
+            name: 'Saisir un plein',
+            short_name: 'Plein',
+            url: '/?action=new',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Saisir une recharge',
+            short_name: 'Recharge',
+            url: '/?action=recharge',
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
+        launch_handler: { client_mode: 'focus-existing' },
       },
       workbox: {
         navigateFallback: 'index.html',

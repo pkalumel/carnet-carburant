@@ -13,7 +13,7 @@ import History from './components/History'
 import Settings from './components/Settings'
 import VehicleManager from './components/VehicleManager'
 import { GearIcon, HistoryIcon, HomeIcon, PumpIcon, ShieldIcon, StatsIcon } from './components/icons'
-import { usePwaUpdate } from './lib/pwa'
+import { FILL_COUNT_KEY, useInstallBanner, usePwaUpdate } from './lib/pwa'
 import { PULL_THRESHOLD, usePullToRefresh } from './lib/usePullToRefresh'
 
 const Stats = lazy(() => import('./components/Stats'))
@@ -22,6 +22,10 @@ const Admin = lazy(() => import('./components/Admin'))
 type Tab = 'new' | 'history' | 'stats' | 'settings' | 'admin'
 
 const VEHICLE_KEY = 'carnet:vehicle'
+
+// Raccourci PWA (?action=new|recharge) capturé avant le premier rendu
+const bootAction = new URLSearchParams(window.location.search).get('action')
+if (bootAction) window.history.replaceState({}, '', window.location.pathname)
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -48,6 +52,8 @@ export default function App() {
     () => emailLinkType === 'invite' || emailLinkType === 'recovery',
   )
   const update = usePwaUpdate()
+  const [fillCount, setFillCount] = useState(() => Number(localStorage.getItem(FILL_COUNT_KEY) ?? 0))
+  const install = useInstallBanner(fillCount)
 
   const showToast = useCallback(
     (
@@ -253,6 +259,23 @@ export default function App() {
           Nouvelle version disponible — Mettre à jour
         </button>
       )}
+      {install.show && (
+        <div className="netbanner pending install-banner">
+          <span>
+            {install.canPrompt
+              ? 'Installe Carnet Carburant sur ton écran d’accueil'
+              : 'Installe l’app : Partager → « Sur l’écran d’accueil »'}
+          </span>
+          {install.canPrompt && (
+            <button className="banner-btn" onClick={install.install}>
+              Installer
+            </button>
+          )}
+          <button className="banner-x" onClick={install.dismiss} aria-label="Ne plus proposer">
+            ✕
+          </button>
+        </div>
+      )}
       {!online && (
         <div className="netbanner offline">
           Hors ligne — les pleins saisis seront synchronisés au retour du réseau
@@ -287,6 +310,7 @@ export default function App() {
                 vehicleFilter={vehicleFilter}
                 userEmail={userEmail}
                 showToast={showToast}
+                autoOpenEntry={bootAction === 'new' || bootAction === 'recharge'}
                 onOpenHistory={() => setTab('history')}
                 onOpenDraft={(id) => {
                   setDraftToOpen(id)
@@ -300,6 +324,11 @@ export default function App() {
                         ? 'Photo enregistrée — à compléter dans l’historique'
                         : 'Plein enregistré ✓',
                   )
+                  if (!draft) {
+                    const n = fillCount + 1
+                    setFillCount(n)
+                    localStorage.setItem(FILL_COUNT_KEY, String(n))
+                  }
                   if (draft) setTab('history')
                   void refresh()
                 }}

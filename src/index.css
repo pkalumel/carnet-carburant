@@ -1105,6 +1105,27 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Bannière d'installation ---------- */
+.install-banner { display: flex; align-items: center; gap: 10px; }
+.install-banner span { flex: 1; text-align: left; }
+.banner-btn {
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.banner-x {
+  background: none;
+  border: none;
+  color: var(--ink-64);
+  font-size: 14px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
 /* ---------- Feedback : action de toast, pastille d'attente ---------- */
 .toast-action {
   background: none;
