@@ -1105,6 +1105,18 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Stats : cartes « un KPI, une courbe » ---------- */
+.kpi-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.kpi-row .kpi-val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 700;
+}
+.kpi-row .kpi-sub { font-size: 11px; color: var(--ink-64); }
+/* Le résumé sombre s'étale sur toute la largeur de la grille desktop */
+.stats-grid > .card.hero { grid-column: 1 / -1; }
+
 /* ---------- Historique : carnet réglé ---------- */
 /* En-tête de mois collant sous la topbar (fond opaque : pas de blur
    imbriqué dans un sticky, piège iOS) */

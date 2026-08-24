@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { consumptionSeries, monthlyCostsByVehicle, priceSeries, summarize } from '../lib/stats'
+import { consumptionSeries, monthlyCostsByVehicle, movingAverage, priceSeries, summarize } from '../lib/stats'
 import { fmtConso, fmtConsoElec, fmtEur, fmtKm, fmtPricePerKwh, fmtPricePerL } from '../lib/format'
 import { ACTIVE_DOT, AXIS, CURSOR, GRID, SERIES } from '../lib/chartTheme'
 import { Meter, Tip } from './chartKit'
@@ -59,13 +59,17 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
     [scoped, vehicles],
   )
 
-  const conso = singleVehicle
-    ? consumptionSeries(scoped).map((p) => ({
-        ...p,
-        label: dayLabel(p.date),
-        tip: `${dayLabel(p.date)}\n${fmtConso(p.per100)} sur ${fmtKm(p.km)}`,
-      }))
-    : []
+  const conso = useMemo(() => {
+    if (!singleVehicle) return []
+    const pts = consumptionSeries(scoped)
+    const ma = movingAverage(pts.map((p) => p.per100))
+    return pts.map((p, i) => ({
+      ...p,
+      ma: ma[i],
+      label: dayLabel(p.date),
+      tip: `${dayLabel(p.date)}\n${fmtConso(p.per100)} sur ${fmtKm(p.km)}`,
+    }))
+  }, [scoped, singleVehicle])
   const consoElec = singleVehicle
     ? consumptionSeries(scoped, 'electric').map((p) => ({
         ...p,
@@ -120,64 +124,22 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
         ))}
       </div>
 
-      <section className="card hero">
-        <h2>En résumé</h2>
-        <div className="meter-lead-row">
-          <div className="meter-big lead">
-            {num(summary.totalSpent, 2)}
-            <span className="meter-unit">€</span>
-          </div>
-          <div className="meter-label">Total dépensé</div>
-        </div>
-        <div className="meter-row">
-          {(hasFuel || !hasElec) && (
-            <Meter value={num(summary.avgConso, 1)} unit="L/100" label={hasElec ? 'Conso carburant' : 'Conso moyenne'} />
-          )}
-          {hasElec && (
-            <Meter value={num(summary.avgConsoElec, 1)} unit="kWh/100" label={hasFuel ? 'Conso élec' : 'Conso moyenne'} />
-          )}
-          <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
-          {(hasFuel || !hasElec) && (
-            <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label={hasElec ? 'Prix du litre' : 'Prix moyen'} />
-          )}
-          {hasElec && (
-            <Meter value={num(summary.avgPricePerKwh, 3)} unit="€/kWh" label={hasFuel ? 'Prix du kWh' : 'Prix moyen'} />
-          )}
-        </div>
-        {summary.avgConso == null && summary.avgConsoElec == null && (
-          <p className="hero-note">
-            La consommation se calcule entre deux pleins (ou charges) complets avec kilométrage relevé
-            {singleVehicle ? '.' : ' — choisis un véhicule en haut pour la voir.'}
-          </p>
-        )}
-      </section>
-
       <div className="stats-grid">
       {singleVehicle && conso.length > 0 && (
         <section className="card">
-          <h2>Consommation (L/100 km)</h2>
+          <h2>Consommation</h2>
+          <div className="kpi-row">
+            <span className="kpi-val">{num(summary.avgConso, 1)}</span>
+            <span className="kpi-sub">L/100 km · moyenne mobile en jaune</span>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={conso} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </section>
-      )}
-
-      {singleVehicle && consoElec.length > 0 && (
-        <section className="card">
-          <h2>Consommation électrique (kWh/100 km)</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={consoElec} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
-              <CartesianGrid stroke={GRID} vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
-              <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
-              <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
-              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: 'var(--ink)' }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="ma" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={false} />
             </LineChart>
           </ResponsiveContainer>
         </section>
@@ -185,7 +147,11 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
 
       {months.length > 0 && (
         <section className="card">
-          <h2>Dépense par mois (€)</h2>
+          <h2>Dépense par mois</h2>
+          <div className="kpi-row">
+            <span className="kpi-val">{num(summary.totalSpent, 0)}</span>
+            <span className="kpi-sub">€ sur la période</span>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={months} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -220,7 +186,11 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
 
       {singleVehicle && prices.length > 1 && (
         <section className="card">
-          <h2>Prix du litre (€/L)</h2>
+          <h2>Prix du litre</h2>
+          <div className="kpi-row">
+            <span className="kpi-val">{num(summary.avgPricePerLiter, 3)}</span>
+            <span className="kpi-sub">€/L en moyenne</span>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={prices} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
@@ -228,6 +198,53 @@ export default function Stats({ fillups, vehicles, vehicleFilter }: Props) {
               <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={48} domain={['auto', 'auto']} tickFormatter={(v: number) => v.toFixed(2)} />
               <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
               <Line isAnimationActive={false} type="monotone" dataKey="price" stroke={SERIES[0]} strokeWidth={2} dot={{ r: 3, fill: SERIES[0], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      )}
+
+      <section className="card hero">
+        <h2>En résumé</h2>
+        <div className="meter-lead-row">
+          <div className="meter-big lead">
+            {num(summary.totalSpent, 2)}
+            <span className="meter-unit">€</span>
+          </div>
+          <div className="meter-label">Total dépensé</div>
+        </div>
+        <div className="meter-row">
+          {(hasFuel || !hasElec) && (
+            <Meter value={num(summary.avgConso, 1)} unit="L/100" label={hasElec ? 'Conso carburant' : 'Conso moyenne'} />
+          )}
+          {hasElec && (
+            <Meter value={num(summary.avgConsoElec, 1)} unit="kWh/100" label={hasFuel ? 'Conso élec' : 'Conso moyenne'} />
+          )}
+          <Meter value={num(summary.costPerKm != null ? summary.costPerKm * 100 : null, 1)} unit="c€/km" label="Coût au km" />
+          {(hasFuel || !hasElec) && (
+            <Meter value={num(summary.avgPricePerLiter, 3)} unit="€/L" label={hasElec ? 'Prix du litre' : 'Prix moyen'} />
+          )}
+          {hasElec && (
+            <Meter value={num(summary.avgPricePerKwh, 3)} unit="€/kWh" label={hasFuel ? 'Prix du kWh' : 'Prix moyen'} />
+          )}
+        </div>
+        {summary.avgConso == null && summary.avgConsoElec == null && (
+          <p className="hero-note">
+            La consommation se calcule entre deux pleins (ou charges) complets avec kilométrage relevé
+            {singleVehicle ? '.' : ' — choisis un véhicule en haut pour la voir.'}
+          </p>
+        )}
+      </section>
+
+      {singleVehicle && consoElec.length > 0 && (
+        <section className="card">
+          <h2>Consommation électrique (kWh/100 km)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={consoElec} margin={{ top: 8, right: 8, left: -4, bottom: 0 }}>
+              <CartesianGrid stroke={GRID} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={{ stroke: GRID }} />
+              <YAxis tick={{ fontSize: 11, fill: AXIS }} tickLine={false} axisLine={false} width={44} domain={['auto', 'auto']} />
+              <Tooltip content={<Tip />} cursor={{ stroke: GRID }} />
+              <Line isAnimationActive={false} type="monotone" dataKey="per100" stroke={SERIES[3]} strokeWidth={2} dot={{ r: 3, fill: SERIES[3], strokeWidth: 0 }} activeDot={{ r: 5, fill: ACTIVE_DOT }} />
             </LineChart>
           </ResponsiveContainer>
         </section>

@@ -159,3 +159,11 @@ export function summarize(fillups: Fillup[]): Summary {
     trackedKm: Math.max(fuel.km, elec.km),
   }
 }
+
+/** Moyenne mobile (fenêtre glissante, fenêtres partielles en début de série) */
+export function movingAverage(values: number[], window = 5): number[] {
+  return values.map((_, i) => {
+    const slice = values.slice(Math.max(0, i - window + 1), i + 1)
+    return slice.reduce((s, v) => s + v, 0) / slice.length
+  })
+}
