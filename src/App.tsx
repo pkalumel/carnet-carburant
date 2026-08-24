@@ -35,6 +35,8 @@ export default function App() {
   )
   const [toast, setToast] = useState<{ msg: string; kind: 'ok' | 'err' } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // Brouillon à ouvrir directement dans l'éditeur de l'Historique
+  const [draftToOpen, setDraftToOpen] = useState<string | null>(null)
   // Arrivée par lien d'invitation ou de récupération : le mot de passe se
   // définit avant d'entrer dans l'app.
   const [needsPassword, setNeedsPassword] = useState(
@@ -257,6 +259,10 @@ export default function App() {
                 userEmail={userEmail}
                 showToast={showToast}
                 onOpenHistory={() => setTab('history')}
+                onOpenDraft={(id) => {
+                  setDraftToOpen(id)
+                  setTab('history')
+                }}
                 onSaved={(status, draft) => {
                   showToast(
                     status === 'queued'
@@ -279,6 +285,8 @@ export default function App() {
             allFillups={fillups}
             vehicles={vehicles}
             userId={userId}
+            initialEditId={draftToOpen}
+            onInitialEditConsumed={() => setDraftToOpen(null)}
             onChanged={() => void refresh()}
             showToast={showToast}
           />

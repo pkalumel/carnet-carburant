@@ -1105,6 +1105,29 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Accueil : rangée d'actions et carte « À compléter » ---------- */
+.home-actions { display: flex; gap: 10px; }
+.home-actions .btn { flex: 1; }
+.btn-photo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: var(--surface);
+  flex: none;
+}
+.btn-photo .cam-mini {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #ffd35c 0%, var(--accent) 60%, var(--accent-press) 100%);
+  color: var(--on-accent);
+}
+.card h2 .badge { vertical-align: 1px; }
+.btn-complete { flex: none; padding: 9px 14px; min-height: 40px; }
+
 /* ---------- Saisie : triangle, affixes, suggestions, plausibilité ---------- */
 /* Champ avec unité en affixe (le label reste au-dessus, jamais en placeholder) */
 .input-affix { position: relative; }

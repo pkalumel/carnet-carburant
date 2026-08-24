@@ -16,6 +16,9 @@ interface Props {
   allFillups: Fillup[]
   vehicles: Vehicle[]
   userId: string
+  /** ouverture directe d'un plein (depuis « À compléter » de l'accueil) */
+  initialEditId?: string | null
+  onInitialEditConsumed?: () => void
   onChanged: () => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
@@ -288,8 +291,18 @@ function Editor({
 const monthOf = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
-export default function History({ fillups, allFillups, vehicles, userId, onChanged, showToast }: Props) {
+export default function History({
+  fillups, allFillups, vehicles, userId, initialEditId, onInitialEditConsumed, onChanged, showToast,
+}: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Ouverture directe demandée par l'accueil (carte « À compléter »)
+  useEffect(() => {
+    if (initialEditId) {
+      setEditingId(initialEditId)
+      onInitialEditConsumed?.()
+    }
+  }, [initialEditId, onInitialEditConsumed])
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '?'
 
   // Éditable = plein d'un de MES véhicules, ou saisie dont je suis

@@ -13,12 +13,14 @@ interface Props {
   /** Énergie imposée (formulaire) ; absente → celle par défaut du véhicule */
   energy?: Energy
   userEmail: string | null
+  /** 'card' = grande carte héros ; 'button' = bouton compact [📷 Photo] */
+  variant?: 'card' | 'button'
   onSaved: (status: 'synced' | 'queued') => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
 
 /** Capture rapide : le geste d'urgence à la pompe ou à la borne → brouillon à compléter */
-export default function QuickCapture({ vehicles, vehicleId, energy, userEmail, onSaved, showToast }: Props) {
+export default function QuickCapture({ vehicles, vehicleId, energy, userEmail, variant = 'card', onSaved, showToast }: Props) {
   const [busy, setBusy] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
@@ -62,6 +64,35 @@ export default function QuickCapture({ vehicles, vehicleId, energy, userEmail, o
     } finally {
       setBusy(false)
     }
+  }
+
+  if (variant === 'button') {
+    return (
+      <>
+        <button
+          type="button"
+          className="btn-ghost btn-photo"
+          disabled={busy}
+          onClick={() => input.current?.click()}
+        >
+          <span className="cam-mini" aria-hidden>
+            <CameraIcon size={16} />
+          </span>
+          Photo
+        </button>
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void capture(f)
+          }}
+        />
+      </>
+    )
   }
 
   return (

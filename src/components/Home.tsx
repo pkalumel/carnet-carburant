@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { getPhotoUrl } from '../lib/db'
 import { summarize } from '../lib/stats'
 import {
   fmtDateTime, fmtEur, fmtKwh, fmtLiters, fmtPricePerKwh, fmtPricePerL,
@@ -7,7 +8,7 @@ import type { Fillup, Vehicle } from '../lib/types'
 import FillupForm from './FillupForm'
 import QuickCapture from './QuickCapture'
 import { Meter } from './chartKit'
-import { BoltIcon, HistoryIcon, PlusIcon, PumpIcon } from './icons'
+import { BoltIcon, CameraIcon, HistoryIcon, PlusIcon, PumpIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -20,6 +21,8 @@ interface Props {
   showToast: (msg: string, kind?: 'ok' | 'err') => void
   onSaved: (status: 'synced' | 'queued', draft: boolean) => void
   onOpenHistory: () => void
+  /** ouvre directement l'éditeur d'un brouillon dans l'Historique */
+  onOpenDraft: (id: string) => void
 }
 
 const num = (v: number | null, digits: number) =>
@@ -27,8 +30,26 @@ const num = (v: number | null, digits: number) =>
     ? '—'
     : v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
+function DraftThumb({ path }: { path: string | null }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    if (path) void getPhotoUrl(path).then((u) => alive && setUrl(u))
+    else setUrl(null)
+    return () => {
+      alive = false
+    }
+  }, [path])
+  if (url) return <img className="thumb" src={url} alt="" />
+  return (
+    <div className="thumb ph">
+      <CameraIcon size={22} />
+    </div>
+  )
+}
+
 export default function Home({
-  vehicles, fillups, allFillups, vehicleFilter, userEmail, showToast, onSaved, onOpenHistory,
+  vehicles, fillups, allFillups, vehicleFilter, userEmail, showToast, onSaved, onOpenHistory, onOpenDraft,
 }: Props) {
   const [entryOpen, setEntryOpen] = useState(false)
 
@@ -42,67 +63,65 @@ export default function Home({
   }, [entryOpen])
 
   const real = useMemo(() => fillups.filter((f) => !f.is_draft), [fillups])
-  const draftCount = fillups.length - real.length
+  const drafts = useMemo(() => fillups.filter((f) => f.is_draft && !f.pending), [fillups])
 
-  // Dépense et pleins du mois en cours (dates locales)
-  const { monthCost, monthCount, monthName } = useMemo(() => {
+  // Dépense du mois en cours + delta vs mois précédent (dates locales)
+  const { monthCost, monthCount, monthName, prevCost, prevName } = useMemo(() => {
     const now = new Date()
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     let cost = 0
     let count = 0
+    let pCost = 0
     for (const f of real) {
       const d = new Date(f.filled_at)
       if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
         cost += f.total_price ?? 0
         count += 1
+      } else if (d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth()) {
+        pCost += f.total_price ?? 0
       }
     }
     return {
       monthCost: cost,
       monthCount: count,
       monthName: now.toLocaleDateString('fr-FR', { month: 'long' }),
+      prevCost: pCost,
+      prevName: prev.toLocaleDateString('fr-FR', { month: 'long' }),
     }
   }, [real])
 
+  const deltaPct = prevCost > 0 ? ((monthCost - prevCost) / prevCost) * 100 : null
+
   const summary = useMemo(() => summarize(fillups), [fillups])
 
-  // Dernier plein + tendance du prix unitaire vs le précédent
-  // (même véhicule, même énergie — comparer un plein d'essence à une
-  // recharge n'aurait aucun sens)
+  // Dernier plein + comparaison à MA moyenne 6 mois (même véhicule, même énergie)
   const last = real.find((f) => f.liters != null) ?? null
-  const prev = last
-    ? real.find(
+  const avg6 = useMemo(() => {
+    if (!last) return null
+    const cutoff = new Date()
+    cutoff.setMonth(cutoff.getMonth() - 6)
+    const iso = cutoff.toISOString()
+    const prices = real
+      .filter(
         (f) =>
-          f.id !== last.id &&
           f.vehicle_id === last.vehicle_id &&
           f.energy === last.energy &&
           f.price_per_liter != null &&
-          f.filled_at < last.filled_at,
-      ) ?? null
-    : null
+          f.filled_at >= iso &&
+          f.id !== last.id,
+      )
+      .map((f) => f.price_per_liter as number)
+    if (prices.length === 0) return null
+    return prices.reduce((s, p) => s + p, 0) / prices.length
+  }, [real, last])
   const trendCts =
-    last?.price_per_liter != null && prev?.price_per_liter != null
-      ? (last.price_per_liter - prev.price_per_liter) * 100
-      : null
+    last?.price_per_liter != null && avg6 != null ? (last.price_per_liter - avg6) * 100 : null
 
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '—'
-  const recent = real.slice(0, 4)
+  const recent = real.slice(0, 3)
 
   return (
     <>
-      {draftCount > 0 && (
-        <button className="netbanner pending banner-action" onClick={onOpenHistory}>
-          {draftCount === 1 ? '1 plein à compléter' : `${draftCount} pleins à compléter`} — ouvrir
-        </button>
-      )}
-
-      <QuickCapture
-        vehicles={vehicles}
-        vehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
-        userEmail={userEmail}
-        onSaved={(status) => onSaved(status, true)}
-        showToast={showToast}
-      />
-
       <section className="card">
         <h2>Ce mois-ci</h2>
         <div className="meter-lead-row">
@@ -110,7 +129,14 @@ export default function Home({
             {num(monthCost, 2)}
             <span className="meter-unit">€</span>
           </div>
-          <div className="meter-label">Dépensé en {monthName}</div>
+          <div className="meter-label">
+            Dépensé en {monthName}
+            {deltaPct != null && Math.abs(deltaPct) >= 1 && (
+              <span className={deltaPct > 0 ? 'trend up' : 'trend down'}>
+                {deltaPct > 0 ? '▲' : '▼'} {num(Math.abs(deltaPct), 0)} % vs {prevName}
+              </span>
+            )}
+          </div>
         </div>
         <div className="meter-row">
           <Meter value={String(monthCount)} label={monthCount > 1 ? 'Pleins ce mois' : 'Plein ce mois'} />
@@ -128,9 +154,42 @@ export default function Home({
         </div>
       </section>
 
-      <button className="btn btn-primary" onClick={() => setEntryOpen(true)}>
-        <PlusIcon /> Saisir un plein ou une recharge
-      </button>
+      <div className="home-actions">
+        <QuickCapture
+          vehicles={vehicles}
+          vehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
+          userEmail={userEmail}
+          variant="button"
+          onSaved={(status) => onSaved(status, true)}
+          showToast={showToast}
+        />
+        <button className="btn btn-primary" onClick={() => setEntryOpen(true)}>
+          <PlusIcon /> Saisir un plein
+        </button>
+      </div>
+
+      {drafts.length > 0 && (
+        <section className="card">
+          <h2>
+            À compléter
+            <span className="badge badge-draft">{drafts.length}</span>
+          </h2>
+          {drafts.map((f) => (
+            <div key={f.id} className="fillup-item">
+              <DraftThumb path={f.photo_path} />
+              <div className="body">
+                <div className="date">
+                  {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
+                </div>
+                <div className="sub">Recopie les chiffres de la {f.energy === 'electric' ? 'borne' : 'pompe'}</div>
+              </div>
+              <button className="btn-ghost btn-complete" onClick={() => onOpenDraft(f.id)}>
+                Compléter
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {last && (
         <section className="card">
@@ -153,8 +212,7 @@ export default function Home({
                   : fmtPricePerL(last.price_per_liter)}
                 {trendCts != null && Math.abs(trendCts) >= 0.05 && (
                   <span className={trendCts > 0 ? 'trend up' : 'trend down'}>
-                    {trendCts > 0 ? '▲' : '▼'} {num(Math.abs(trendCts), 1)} cts
-                    {last.energy === 'electric' ? '/kWh' : '/L'}
+                    {trendCts > 0 ? '▲' : '▼'} {num(Math.abs(trendCts), 1)} cts vs ta moyenne 6 mois
                   </span>
                 )}
               </div>
@@ -194,7 +252,7 @@ export default function Home({
             <PumpIcon size={30} />
           </div>
           <div className="empty-title">Aucun plein pour l’instant</div>
-          Photographie la pompe avec la capture rapide, ou saisis ton premier plein juste au-dessus.
+          Photographie la pompe avec le bouton Photo, ou saisis ton premier plein juste au-dessus.
         </div>
       )}
 
