@@ -55,6 +55,8 @@ export default function App() {
   const update = usePwaUpdate()
   // Feuille de saisie GLOBALE : le « + » central l'ouvre depuis tout onglet
   const [entryOpen, setEntryOpen] = useState(bootAction === 'new' || bootAction === 'recharge')
+  // Coche de succès : elle démarre AVANT la fermeture de la sheet pour rester visible
+  const [successFlash, setSuccessFlash] = useState(false)
   const [fillCount, setFillCount] = useState(() => Number(localStorage.getItem(FILL_COUNT_KEY) ?? 0))
   const install = useInstallBanner(fillCount)
 
@@ -425,7 +427,10 @@ export default function App() {
               userEmail={userEmail}
               showToast={showToast}
               onSaved={(status, draft) => {
-                setEntryOpen(false)
+                navigator.vibrate?.(30)
+                setSuccessFlash(true)
+                window.setTimeout(() => setEntryOpen(false), 150)
+                window.setTimeout(() => setSuccessFlash(false), 900)
                 showToast(
                   status === 'queued'
                     ? 'Enregistré sur le téléphone — synchronisation dès que possible'
@@ -444,6 +449,16 @@ export default function App() {
             />
           </div>
         </>
+      )}
+
+      {successFlash && (
+        <div className="success-flash" role="status" aria-live="polite">
+          <span className="sr-only">Plein enregistré</span>
+          <svg viewBox="0 0 52 52" aria-hidden>
+            <circle cx="26" cy="26" r="24" />
+            <path d="M15 27l7 7 15-16" />
+          </svg>
+        </div>
       )}
 
       {toast && (

@@ -105,10 +105,11 @@ async function insertFillup(row: Record<string, unknown>): Promise<void> {
 }
 
 async function uploadPhoto(id: string, photo: Blob): Promise<string> {
-  const path = `pump/${id}.jpg`
+  const webp = photo.type === 'image/webp'
+  const path = `pump/${id}.${webp ? 'webp' : 'jpg'}`
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, photo, { contentType: 'image/jpeg', upsert: true })
+    .upload(path, photo, { contentType: webp ? 'image/webp' : 'image/jpeg', upsert: true })
   if (error) throw error
   return path
 }

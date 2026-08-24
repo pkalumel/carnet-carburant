@@ -62,6 +62,8 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
   const [isFull, setIsFull] = useState(true)
   const [notes, setNotes] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
+  /** avertissements écartés d'un « C'est normal » — ne reviennent pas pour cette saisie */
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [errors, setErrors] = useState<{ volume?: string; total?: string }>({})
@@ -69,6 +71,8 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
   const attachInput = useRef<HTMLInputElement>(null)
   const volumeInput = useRef<HTMLInputElement>(null)
   const totalInput = useRef<HTMLInputElement>(null)
+  const unitInput = useRef<HTMLInputElement>(null)
+  const odoInput = useRef<HTMLInputElement>(null)
 
   // Lieu de la saisie : capturé à l'ouverture, retirable, jamais bloquant
   const [geo, setGeo] = useState<GeoPoint | null>(null)
@@ -173,7 +177,21 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
         lastOdo,
       }),
     [vehicleId, energy, odoNum, vals.volume, vals.unit, fillups, lastOdo],
-  )
+  ).filter((w) => !dismissed.has(w.id))
+
+  // La vignette de la photo jointe remplace le nom de fichier brut
+  const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo])
+  useEffect(() => {
+    return () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl)
+    }
+  }, [photoUrl])
+
+  function focusWarnField(field: 'odo' | 'volume' | 'unit' | undefined) {
+    const ref = field === 'odo' ? odoInput : field === 'unit' ? unitInput : volumeInput
+    ref.current?.focus()
+    ref.current?.select()
+  }
 
   function resetForm() {
     setTriangle(emptyTriangle())
@@ -184,6 +202,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     setIsFull(storedFull(energy))
     setNotes('')
     setPhoto(null)
+    setDismissed(new Set())
     setErrors({})
     setShowMore(false)
     if (attachInput.current) attachInput.current.value = ''
@@ -245,6 +264,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     ref?: React.RefObject<HTMLInputElement | null>,
     error?: string,
     enterHint: 'next' | 'done' = 'next',
+    autoFocus = false,
   ) => {
     const isDerived = derived === field && triangle[field] !== ''
     return (
@@ -257,6 +277,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
             type="text"
             inputMode="decimal"
             enterKeyHint={enterHint}
+            autoFocus={autoFocus}
             className={error ? 'error' : ''}
             value={triangle[field]}
             onChange={(e) => {
@@ -335,15 +356,16 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
         )}
 
         <div className="field-grid">
-          {numField('volume', volAffix === 'kWh' ? 'kWh' : 'Litres', volAffix, volumeInput, errors.volume)}
+          {numField('volume', volAffix === 'kWh' ? 'kWh' : 'Litres', volAffix, volumeInput, errors.volume, 'next', true)}
           {numField('total', 'Prix total', '€', totalInput, errors.total)}
         </div>
         <div className="field-grid">
-          {numField('unit', electric ? 'Prix au kWh' : 'Prix au litre', unitAffix)}
+          {numField('unit', electric ? 'Prix au kWh' : 'Prix au litre', unitAffix, unitInput)}
           <label className="field">
             <span className="lbl">Compteur</span>
             <div className="input-affix">
               <input
+                ref={odoInput}
                 type="text"
                 inputMode="numeric"
                 enterKeyHint="done"
@@ -387,8 +409,24 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
         </div>
 
         {warnings.map((w) => (
-          <div key={w} className="field-warn" role="status">
-            <span aria-hidden>⚠</span> {w}
+          <div key={w.id} className="field-warn" role="status">
+            <div className="warn-msg">
+              <span aria-hidden>⚠</span> {w.msg}
+            </div>
+            <div className="warn-actions">
+              {w.field && (
+                <button type="button" className="warn-btn" onClick={() => focusWarnField(w.field)}>
+                  Corriger
+                </button>
+              )}
+              <button
+                type="button"
+                className="warn-btn"
+                onClick={() => setDismissed((d) => new Set(d).add(w.id))}
+              >
+                C’est normal
+              </button>
+            </div>
           </div>
         ))}
 
@@ -496,9 +534,13 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
                 onClick={() => attachInput.current?.click()}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <AttachIcon />
+                {photoUrl ? (
+                  <img className="photo-mini" src={photoUrl} alt="" />
+                ) : (
+                  <AttachIcon />
+                )}
                 {photo
-                  ? `Photo jointe : ${photo.name}`
+                  ? 'Photo jointe — changer'
                   : electric
                     ? 'Joindre la photo de la borne'
                     : 'Joindre la photo de la pompe'}

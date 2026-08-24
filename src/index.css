@@ -403,7 +403,8 @@ input[type="password"], input[type="datetime-local"], textarea, select.input {
   border-radius: var(--radius-sm);
   background: var(--field);
   color: var(--ink);
-  padding: 12px;
+  padding: 15px 12px;
+  min-height: 56px;
   font-size: 17px;
   font-family: var(--sans);
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -417,7 +418,7 @@ input[inputmode="decimal"], input[inputmode="numeric"], input[type="number"] {
 input[type="datetime-local"] {
   -webkit-appearance: none;
   appearance: none;
-  min-height: 51px;
+  min-height: 56px;
   text-align: left;
 }
 input::-webkit-date-and-time-value {
@@ -860,7 +861,7 @@ nav.tabs button.active {
   border: none;
   background: none;
   border-radius: 999px;
-  min-height: 40px;
+  min-height: 48px;
   font-size: 14px;
   font-weight: 600;
   color: var(--ink-80);
@@ -1246,9 +1247,10 @@ html, body { overscroll-behavior-y: none; }
 /* Valeur pré-remplie « suggérée » : grise tant qu'elle n'est pas éditée */
 input.suggested { color: var(--ink-64); }
 
-/* Avertissement de plausibilité — informe, ne bloque pas */
+/* Avertissement de plausibilité — informe, ne bloque pas, se corrige ou s'écarte */
 .field-warn {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -1257,6 +1259,76 @@ input.suggested { color: var(--ink-64); }
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
+}
+.field-warn .warn-msg { display: flex; gap: 8px; }
+.field-warn .warn-actions { display: flex; gap: 8px; }
+.warn-btn {
+  border: none;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--sans);
+}
+.warn-btn:active { transform: scale(0.97); }
+
+/* Vignette de la photo jointe dans le bouton de saisie */
+.photo-mini {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex: none;
+}
+
+/* Coche de succès : démarre avant la fermeture de la sheet, reste ~600 ms */
+.success-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.success-flash svg {
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
+}
+.success-flash circle {
+  fill: var(--ok);
+  stroke: none;
+}
+.success-flash path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-draw 0.35s ease-out 0.1s forwards;
+}
+@keyframes check-draw {
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-flash path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* Ligne lieu « 📍 Rue de la Station, Wavre » — retirable, jamais bloquante */

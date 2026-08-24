@@ -1,5 +1,6 @@
 /**
- * Réduit une photo avant envoi : max 1600 px de côté, JPEG qualité 0,8.
+ * Réduit une photo avant envoi : max 1600 px de côté, WebP qualité 0,8
+ * (repli JPEG pour les navigateurs qui ne l'encodent pas).
  * En cas d'échec (format exotique), renvoie le fichier d'origine.
  */
 export async function downscalePhoto(file: File): Promise<Blob> {
@@ -16,10 +17,12 @@ export async function downscalePhoto(file: File): Promise<Blob> {
     if (!ctx) return file
     ctx.drawImage(bitmap, 0, 0, w, h)
     bitmap.close()
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.8),
-    )
-    return blob ?? file
+    const toBlob = (type: string) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.8))
+    const webp = await toBlob('image/webp')
+    if (webp && webp.type === 'image/webp') return webp
+    const jpeg = await toBlob('image/jpeg')
+    return jpeg ?? file
   } catch {
     return file
   }
