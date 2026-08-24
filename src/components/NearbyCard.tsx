@@ -47,9 +47,6 @@ const meIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
-/** Rayon affiché par défaut autour de la position, aligné sur la recherche */
-const VIEW_RADIUS_M = 10_000
-
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Fond de carte : Mapbox (style suivant le thème) ; sans jeton, tuiles
@@ -158,16 +155,11 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
     if (!geo || !mapEl.current || mapRef.current) return
     const map = L.map(mapEl.current, {
       center: [geo.lat, geo.lng],
-      zoom: 12,
-      // zoom fractionnaire : le cadrage 10 km tombe juste au lieu d'être
-      // arrondi au niveau de tuile inférieur (vue deux fois trop large)
-      zoomSnap: 0.5,
+      zoom: 13,
       zoomControl: false,
       scrollWheelZoom: false, // le défilement de la page garde la main sur desktop
       attributionControl: true,
     })
-    // Vue par défaut : 10 km autour de la position (toBounds prend le côté)
-    map.fitBounds(L.latLng(geo.lat, geo.lng).toBounds(VIEW_RADIUS_M * 2))
     tilesRef.current = tileLayer(theme).addTo(map)
     L.control.zoom({ position: 'bottomright' }).addTo(map)
     // le point de position reste visible même sous un groupe d'épingles
@@ -226,12 +218,21 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
       }
     }
 
+    // Le cadrage suit les résultats (la vue ne bouge plus ensuite : le
+    // regroupement se recalcule seul au zoom)
+    if (places.length > 0) {
+      const bounds = L.latLngBounds([
+        ...(geo ? [[geo.lat, geo.lng] as [number, number]] : []),
+        ...places.map((pl) => [pl.lat, pl.lng] as [number, number]),
+      ])
+      map.fitBounds(bounds.pad(0.18), { maxZoom: 15 })
+    }
     draw()
     map.on('zoomend', draw)
     return () => {
       map.off('zoomend', draw)
     }
-  }, [places, mode])
+  }, [places, mode, geo])
 
   return (
     <section className="card nearby-card">
@@ -278,8 +279,8 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
           {state === 'ready' && places.length === 0 && (
             <div className="nearby-overlay">
               {mode === 'electric'
-                ? 'Aucune borne trouvée à moins de 10 km.'
-                : 'Aucune station trouvée à moins de 10 km.'}
+                ? 'Aucune borne trouvée à moins de 5 km.'
+                : 'Aucune station trouvée à moins de 5 km.'}
             </div>
           )}
         </div>

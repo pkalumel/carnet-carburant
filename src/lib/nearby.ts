@@ -26,8 +26,8 @@ export interface NearbyPlace {
   prices?: { label: string; price: number }[]
 }
 
-const RADIUS_KM = 10
-const MAX_RESULTS = 20
+const RADIUS_KM = 5
+const MAX_RESULTS = 12
 const CACHE_TTL_MS = 10 * 60 * 1000
 
 export function haversineKm(a: GeoPoint, b: GeoPoint): number {
