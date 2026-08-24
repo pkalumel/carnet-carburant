@@ -99,29 +99,6 @@ export default function Settings({ vehicles, fillups, userId, userEmail, isAdmin
       )}
 
       <section className="card">
-        <h2>Données</h2>
-        <p className="settings-note">
-          {realCount === 0
-            ? 'Aucun plein à exporter pour l’instant.'
-            : realCount === 1
-              ? '1 plein enregistré.'
-              : `${realCount} pleins enregistrés.`}{' '}
-          L’export CSV s’ouvre dans Excel, Numbers ou Google Sheets.
-        </p>
-        <button className="btn-ghost" style={{ width: '100%' }} onClick={exportCsv} disabled={realCount === 0}>
-          <DownloadIcon /> Exporter tous les pleins en CSV
-        </button>
-      </section>
-
-      <ShareManager
-        vehicles={vehicles}
-        userId={userId}
-        userEmail={userEmail}
-        showToast={showToast}
-        onChanged={onChanged}
-      />
-
-      <section className="card">
         <h2>Apparence</h2>
         <div className="seg" role="radiogroup" aria-label="Thème">
           {(
@@ -143,6 +120,29 @@ export default function Settings({ vehicles, fillups, userId, userEmail, isAdmin
         <p className="settings-note" style={{ marginTop: 10, marginBottom: 0 }}>
           « Auto » suit le réglage clair/sombre du téléphone.
         </p>
+      </section>
+
+      <ShareManager
+        vehicles={vehicles}
+        userId={userId}
+        userEmail={userEmail}
+        showToast={showToast}
+        onChanged={onChanged}
+      />
+
+      <section className="card">
+        <h2>Données</h2>
+        <p className="settings-note">
+          {realCount === 0
+            ? 'Aucun plein à exporter pour l’instant.'
+            : realCount === 1
+              ? '1 plein enregistré.'
+              : `${realCount} pleins enregistrés.`}{' '}
+          L’export CSV s’ouvre dans Excel, Numbers ou Google Sheets.
+        </p>
+        <button className="btn-ghost" style={{ width: '100%' }} onClick={exportCsv} disabled={realCount === 0}>
+          <DownloadIcon /> Exporter tous les pleins en CSV
+        </button>
       </section>
 
       <section className="card">

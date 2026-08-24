@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { addVehicle, deleteVehicle, updateVehicle } from '../lib/db'
 import { parseDecimal } from '../lib/format'
 import { energiesFor, type Fillup, type Vehicle } from '../lib/types'
@@ -174,12 +175,26 @@ function Editor({
   )
 }
 
-export default function VehicleManager({ vehicles, fillups, userId, onChanged, showToast }: Props) {
+/** Feuille d'ajout d'un véhicule — le formulaire ne encombre plus la carte */
+function AddVehicleSheet({
+  onClose, onChanged, showToast,
+}: {
+  onClose: () => void
+  onChanged: () => void
+  showToast: Props['showToast']
+}) {
   const [name, setName] = useState('')
   const [plate, setPlate] = useState('')
   const [fuel, setFuel] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+
+  // La feuille ouverte fige le défilement de la page derrière
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -187,17 +202,63 @@ export default function VehicleManager({ vehicles, fillups, userId, onChanged, s
     setBusy(true)
     try {
       await addVehicle(name.trim(), plate.trim() || null, fuel)
-      setName('')
-      setPlate('')
-      setFuel(null)
       showToast('Véhicule ajouté', 'ok')
+      onClose()
       onChanged()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erreur', 'err')
-    } finally {
       setBusy(false)
     }
   }
+
+  return createPortal(
+    <>
+      <div className="sheet-backdrop" onClick={onClose} />
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="Ajouter un véhicule">
+        <div className="sheet-handle" aria-hidden />
+        <form className="card entry-form" onSubmit={submit}>
+          <div className="sheet-body">
+            <h2>Ajouter un véhicule</h2>
+            <div className="field-grid">
+              <label className="field">
+                <span className="lbl">Nom du véhicule</span>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Clio grise"
+                  autoFocus
+                  required
+                />
+              </label>
+              <label className="field">
+                <span className="lbl">Plaque</span>
+                <input
+                  type="text"
+                  value={plate}
+                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                  placeholder="1-ABC-123" autoCapitalize="characters"
+                />
+              </label>
+            </div>
+            <FuelChips value={fuel} onChange={setFuel} />
+          </div>
+          <div className="sheet-footer">
+            <button className="btn btn-primary" disabled={busy}>
+              <PlusIcon /> Ajouter le véhicule
+            </button>
+          </div>
+        </form>
+      </div>
+    </>,
+    document.body,
+  )
+}
+
+export default function VehicleManager({ vehicles, fillups, userId, onChanged, showToast }: Props) {
+  const [busy, setBusy] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const countFor = (id: string) => fillups.filter((f) => f.vehicle_id === id).length
 
@@ -242,33 +303,21 @@ export default function VehicleManager({ vehicles, fillups, userId, onChanged, s
           </div>
         )
       })}
-      <form onSubmit={submit} style={{ marginTop: 12 }}>
-        <div className="field-grid">
-          <label className="field">
-            <span className="lbl">Nom du véhicule</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Clio grise"
-              required
-            />
-          </label>
-          <label className="field">
-            <span className="lbl">Plaque</span>
-            <input
-              type="text"
-              value={plate}
-              onChange={(e) => setPlate(e.target.value.toUpperCase())}
-              placeholder="1-ABC-123" autoCapitalize="characters"
-            />
-          </label>
-        </div>
-        <FuelChips value={fuel} onChange={setFuel} />
-        <button className="btn btn-primary" disabled={busy}>
-          <PlusIcon /> Ajouter le véhicule
-        </button>
-      </form>
+      <button
+        className="btn-ghost"
+        style={{ width: '100%', marginTop: 12 }}
+        onClick={() => setAdding(true)}
+      >
+        <PlusIcon /> Ajouter un véhicule
+      </button>
+
+      {adding && (
+        <AddVehicleSheet
+          onClose={() => setAdding(false)}
+          onChanged={onChanged}
+          showToast={showToast}
+        />
+      )}
     </section>
   )
 }

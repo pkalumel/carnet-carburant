@@ -278,6 +278,11 @@ html, body {
   overflow-x: visible;
   padding: 0;
 }
+/* En mode enveloppant, les pastilles prennent leur largeur naturelle
+   (« Hybride rechargeable » ne se tronque pas) */
+.chips.wrap .chip {
+  max-width: none;
+}
 
 /* ---------- Bandeau hors ligne / sync ---------- */
 .netbanner {
