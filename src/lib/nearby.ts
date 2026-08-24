@@ -20,7 +20,7 @@ export interface NearbyPlace {
 }
 
 const RADIUS_KM = 5
-const MAX_RESULTS = 4
+const MAX_RESULTS = 12
 const CACHE_TTL_MS = 10 * 60 * 1000
 
 export function haversineKm(a: GeoPoint, b: GeoPoint): number {
@@ -77,7 +77,7 @@ export async function fetchFuelStations(p: GeoPoint): Promise<NearbyPlace[]> {
   const cached = readCache(key)
   if (cached) return cached
 
-  const query = `[out:json][timeout:8];node(around:${RADIUS_KM * 1000},${p.lat},${p.lng})[amenity=fuel];out body 20;`
+  const query = `[out:json][timeout:8];node(around:${RADIUS_KM * 1000},${p.lat},${p.lng})[amenity=fuel];out body 40;`
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -121,7 +121,7 @@ export async function fetchChargers(p: GeoPoint): Promise<NearbyPlace[]> {
   try {
     const url =
       `https://api.openchargemap.io/v3/poi?output=json&latitude=${p.lat}&longitude=${p.lng}` +
-      `&distance=${RADIUS_KM}&distanceunit=km&maxresults=8&compact=true&verbose=false&key=${apiKey}`
+      `&distance=${RADIUS_KM}&distanceunit=km&maxresults=20&compact=true&verbose=false&key=${apiKey}`
     const data = (await fetchJson(url)) as
       | {
           ID: number
