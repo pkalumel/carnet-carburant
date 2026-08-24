@@ -41,8 +41,9 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /**
- * « Autour de moi » : carte des stations carburant (OSM) ou bornes
- * (Open Charge Map) les plus proches — itinéraire depuis l'épingle.
+ * « Autour de moi » : carte des stations carburant ou bornes les plus
+ * proches (HERE en source principale, repli OSM/Open Charge Map) —
+ * itinéraire depuis l'épingle, prix carburant quand HERE les fournit.
  * Jamais bloquant : géoloc refusée ou réseau muet → états doux.
  */
 export default function NearbyCard({ energies, defaultEnergy }: Props) {
@@ -128,6 +129,9 @@ export default function NearbyCard({ energies, defaultEnergy }: Props) {
         fmtDist(pl.dist),
         pl.kw != null ? `${pl.kw.toLocaleString('fr-FR')} kW` : null,
         pl.connectors != null ? `${pl.connectors} ${pl.connectors > 1 ? 'prises' : 'prise'}` : null,
+        pl.price != null
+          ? `${pl.price.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/L${pl.fuelLabel ? ` (${pl.fuelLabel})` : ''}`
+          : null,
       ]
         .filter(Boolean)
         .join(' · ')

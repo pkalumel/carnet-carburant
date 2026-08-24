@@ -1,10 +1,12 @@
 import type { GeoPoint } from './geo'
 
 /**
- * Stations et bornes autour de la position : sources gratuites, JAMAIS
- * bloquantes (le motif de geo.ts) — toute erreur ou délai rend [].
- * Stations carburant : Overpass/OSM (sans clé). Bornes : Open Charge Map
- * (clé gratuite via VITE_OCM_KEY ; sans clé → []).
+ * Stations et bornes autour de la position : JAMAIS bloquantes (le motif
+ * de geo.ts) — toute erreur ou délai rend [].
+ * Source principale : les API HERE (Geocoding & Search v7 /browse avec
+ * show=ev pour les bornes ; Fuel Prices v2 opportuniste pour les prix),
+ * via la clé VITE_HERE_KEY. Repli silencieux si la clé manque ou si HERE
+ * ne répond pas : Overpass/OSM (stations) et Open Charge Map (bornes).
  */
 export interface NearbyPlace {
   id: string
@@ -17,6 +19,10 @@ export interface NearbyPlace {
   kw?: number
   /** bornes : nombre de prises */
   connectors?: number
+  /** stations : prix du carburant principal (€/L), quand HERE le fournit */
+  price?: number
+  /** stations : libellé du carburant du prix (« Diesel », « Super 95 »…) */
+  fuelLabel?: string
 }
 
 const RADIUS_KM = 5
@@ -71,8 +77,8 @@ async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 8000):
   }
 }
 
-/** Stations carburant les plus proches (Overpass/OSM, repli miroir) */
-export async function fetchFuelStations(p: GeoPoint): Promise<NearbyPlace[]> {
+/** Repli stations : Overpass/OSM (sans clé, miroir en secours) */
+async function fetchFuelStationsOsm(p: GeoPoint): Promise<NearbyPlace[]> {
   const key = cacheKey('fuel', p)
   const cached = readCache(key)
   if (cached) return cached
@@ -109,8 +115,8 @@ export async function fetchFuelStations(p: GeoPoint): Promise<NearbyPlace[]> {
   return []
 }
 
-/** Bornes de recharge les plus proches (Open Charge Map, clé gratuite) */
-export async function fetchChargers(p: GeoPoint): Promise<NearbyPlace[]> {
+/** Repli bornes : Open Charge Map (clé gratuite VITE_OCM_KEY) */
+async function fetchChargersOcm(p: GeoPoint): Promise<NearbyPlace[]> {
   const apiKey = import.meta.env.VITE_OCM_KEY as string | undefined
   if (!apiKey) return []
 
@@ -155,4 +161,164 @@ export async function fetchChargers(p: GeoPoint): Promise<NearbyPlace[]> {
   } catch {
     return []
   }
+}
+
+// ------------------------------------------------------------------ HERE
+
+const hereKey = () => (import.meta.env.VITE_HERE_KEY as string | undefined) || null
+
+interface HereBrowseItem {
+  id?: string
+  title?: string
+  position?: { lat?: number; lng?: number }
+  /** mètres depuis le point de recherche */
+  distance?: number
+  extended?: {
+    evStation?: {
+      connectors?: {
+        maxPowerLevel?: number | null
+        chargingPoint?: { numberOfConnectors?: number | null } | null
+        connectorsCount?: number | null
+      }[]
+      totalNumberOfConnectors?: number | null
+    }
+  }
+}
+
+/** Recherche de proximité HERE (Geocoding & Search v7 /browse) */
+async function hereBrowse(p: GeoPoint, category: string, key: string, show?: string): Promise<HereBrowseItem[]> {
+  const url =
+    `https://browse.search.hereapi.com/v1/browse?at=${p.lat},${p.lng}` +
+    `&in=circle:${p.lat},${p.lng};r=${RADIUS_KM * 1000}&categories=${category}` +
+    (show ? `&show=${show}` : '') +
+    `&limit=20&apiKey=${key}`
+  const data = (await fetchJson(url)) as { items?: HereBrowseItem[] } | null
+  return data?.items ?? []
+}
+
+const hereToPlace = (p: GeoPoint, it: HereBrowseItem, idPrefix: string): NearbyPlace | null => {
+  const lat = it.position?.lat
+  const lng = it.position?.lng
+  if (lat == null || lng == null) return null
+  return {
+    id: `${idPrefix}-${it.id ?? `${lat},${lng}`}`,
+    name: it.title || 'Sans nom',
+    dist: it.distance != null ? it.distance / 1000 : haversineKm(p, { lat, lng }),
+    lat,
+    lng,
+  }
+}
+
+/** Bornes EV via HERE /browse + show=ev (connecteurs, kW) */
+async function fetchChargersHere(p: GeoPoint, key: string): Promise<NearbyPlace[]> {
+  const items = await hereBrowse(p, '700-7600-0322', key, 'ev')
+  const places: NearbyPlace[] = []
+  for (const it of items) {
+    const base = hereToPlace(p, it, 'here-ev')
+    if (!base) continue
+    base.name = it.title || 'Borne de recharge'
+    const conns = it.extended?.evStation?.connectors ?? []
+    const kw = Math.max(0, ...conns.map((c) => c.maxPowerLevel ?? 0))
+    const count =
+      it.extended?.evStation?.totalNumberOfConnectors ??
+      conns.reduce(
+        (s, c) => s + (c.chargingPoint?.numberOfConnectors ?? c.connectorsCount ?? 1),
+        0,
+      )
+    if (kw > 0) base.kw = kw
+    if (count > 0) base.connectors = count
+    places.push(base)
+  }
+  return places.sort((a, b) => a.dist - b.dist).slice(0, MAX_RESULTS)
+}
+
+/** Prix carburant HERE (Fuel Prices v2) — opportuniste : couverture selon
+ * la zone et le plan ; toute erreur rend une carte vide. */
+async function hereFuelPrices(p: GeoPoint, key: string): Promise<{ lat: number; lng: number; price: number; label: string }[]> {
+  try {
+    const url =
+      `https://fuel-v2.cc.api.here.com/fuel/stations.json?prox=${p.lat},${p.lng},${RADIUS_KM * 1000}` +
+      `&apikey=${key}`
+    const data = (await fetchJson(url)) as {
+      stations?: {
+        latitude?: number
+        longitude?: number
+        fuelPrice?: { price?: number; fuelTypeName?: string; fuelType?: number }[]
+      }[]
+    } | null
+    if (!data?.stations) return []
+    const out: { lat: number; lng: number; price: number; label: string }[] = []
+    for (const st of data.stations) {
+      if (st.latitude == null || st.longitude == null) continue
+      const fp = (st.fuelPrice ?? []).find((f) => f.price != null && f.price > 0)
+      if (!fp) continue
+      out.push({ lat: st.latitude, lng: st.longitude, price: fp.price as number, label: fp.fuelTypeName ?? '' })
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+/** Stations essence/diesel via HERE /browse, prix Fuel v2 rapprochés < 100 m */
+async function fetchFuelStationsHere(p: GeoPoint, key: string): Promise<NearbyPlace[]> {
+  const [items, prices] = await Promise.all([
+    hereBrowse(p, '700-7600-0116', key),
+    hereFuelPrices(p, key),
+  ])
+  const places: NearbyPlace[] = []
+  for (const it of items) {
+    const base = hereToPlace(p, it, 'here-fuel')
+    if (!base) continue
+    base.name = it.title || 'Station-service'
+    const near = prices.find((pr) => haversineKm(base, { lat: pr.lat, lng: pr.lng }) < 0.1)
+    if (near) {
+      base.price = near.price
+      if (near.label) base.fuelLabel = near.label
+    }
+    places.push(base)
+  }
+  return places.sort((a, b) => a.dist - b.dist).slice(0, MAX_RESULTS)
+}
+
+// ------------------------------------------------- orchestrateurs exportés
+
+/** Stations les plus proches : HERE d'abord, repli OSM si muet */
+export async function fetchFuelStations(p: GeoPoint): Promise<NearbyPlace[]> {
+  const key = hereKey()
+  if (key) {
+    const ck = cacheKey('fuel-here', p)
+    const cached = readCache(ck)
+    if (cached) return cached
+    try {
+      const places = await fetchFuelStationsHere(p, key)
+      if (places.length > 0) {
+        writeCache(ck, places)
+        return places
+      }
+    } catch {
+      // clé invalide ou service muet : le repli prend la main
+    }
+  }
+  return fetchFuelStationsOsm(p)
+}
+
+/** Bornes les plus proches : HERE d'abord, repli Open Charge Map si muet */
+export async function fetchChargers(p: GeoPoint): Promise<NearbyPlace[]> {
+  const key = hereKey()
+  if (key) {
+    const ck = cacheKey('elec-here', p)
+    const cached = readCache(ck)
+    if (cached) return cached
+    try {
+      const places = await fetchChargersHere(p, key)
+      if (places.length > 0) {
+        writeCache(ck, places)
+        return places
+      }
+    } catch {
+      // clé invalide ou service muet : le repli prend la main
+    }
+  }
+  return fetchChargersOcm(p)
 }
