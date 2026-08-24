@@ -316,6 +316,29 @@ export default function History({
   const drafts = fillups.filter((f) => f.is_draft && canEdit(f))
   const editing = fillups.find((f) => f.id === editingId && !f.pending) ?? null
 
+  // Pagination douce : l'année en cours d'abord, le passé à la demande
+  const [yearsBack, setYearsBack] = useState(0)
+  const cutoffYear = new Date().getFullYear() - yearsBack
+  const visibleFillups = useMemo(
+    () => fillups.filter((f) => new Date(f.filled_at).getFullYear() >= cutoffYear),
+    [fillups, cutoffYear],
+  )
+  const hasOlder = useMemo(
+    () => fillups.some((f) => new Date(f.filled_at).getFullYear() < cutoffYear),
+    [fillups, cutoffYear],
+  )
+
+  // Groupes par mois (pour la liste mobile en carnet réglé)
+  const monthGroups = useMemo(() => {
+    const out: { label: string; items: typeof fillups }[] = []
+    for (const f of visibleFillups) {
+      const label = monthOf(f.filled_at)
+      if (out.length === 0 || out[out.length - 1].label !== label) out.push({ label, items: [] })
+      out[out.length - 1].items.push(f)
+    }
+    return out
+  }, [visibleFillups])
+
   // Distance et conso de chaque plein (période close par ce plein), par véhicule et par énergie
   const consoByFillup = useMemo(() => {
     const map = new Map<string, ConsoPoint>()
@@ -414,9 +437,9 @@ export default function History({
             </tr>
           </thead>
           <tbody>
-            {fillups.map((f, i) => {
+            {visibleFillups.map((f, i) => {
               const label = monthOf(f.filled_at)
-              const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
+              const showLabel = i === 0 || monthOf(visibleFillups[i - 1].filled_at) !== label
               const conso = consoByFillup.get(`${f.vehicle_id}|${f.energy}|${f.filled_at}`)
               const electric = f.energy === 'electric'
               return (
@@ -488,23 +511,22 @@ export default function History({
       </div>
 
       <div className="history-list">
-      {fillups.map((f, i) => {
-        const label = monthOf(f.filled_at)
-        const showLabel = i === 0 || monthOf(fillups[i - 1].filled_at) !== label
+      {monthGroups.map((g) => (
+        <Fragment key={g.label}>
+          <div className="month-label">
+            {g.label}
+            <span className="month-sub">
+              {(monthAgg.get(g.label)?.n ?? 0) > 1 ? `${monthAgg.get(g.label)?.n} pleins` : '1 plein'}
+            </span>
+            <span className="month-total">{fmtEur(monthAgg.get(g.label)?.total ?? null)}</span>
+          </div>
+          <div className="card month-card">
+          {g.items.map((f) => {
         const conso = consoByFillup.get(`${f.vehicle_id}|${f.energy}|${f.filled_at}`)
         const electric = f.energy === 'electric'
         return (
-          <Fragment key={f.id}>
-            {showLabel && (
-              <div className="month-label">
-                {label}
-                <span className="month-sub">
-                  {(monthAgg.get(label)?.n ?? 0) > 1 ? `${monthAgg.get(label)?.n} pleins` : '1 plein'}
-                </span>
-                <span className="month-total">{fmtEur(monthAgg.get(label)?.total ?? null)}</span>
-              </div>
-            )}
             <button
+              key={f.id}
               className={f.is_draft ? 'fillup-item draft' : 'fillup-item'}
               onClick={() => {
                 if (f.pending) {
@@ -561,10 +583,18 @@ export default function History({
                 )}
               </div>
             </button>
-          </Fragment>
         )
       })}
+          </div>
+        </Fragment>
+      ))}
       </div>
+
+      {hasOlder && (
+        <button className="btn-ghost btn-year" onClick={() => setYearsBack((y) => y + 1)}>
+          Charger {cutoffYear - 1}
+        </button>
+      )}
 
       {editing && (
         <>

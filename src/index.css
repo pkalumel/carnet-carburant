@@ -1105,6 +1105,21 @@ html, body { overscroll-behavior-y: none; }
   .history-list { display: none; }
 }
 
+/* ---------- Historique : carnet réglé ---------- */
+/* En-tête de mois collant sous la topbar (fond opaque : pas de blur
+   imbriqué dans un sticky, piège iOS) */
+.history-list .month-label {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 108px);
+  z-index: 5;
+  background: var(--bg);
+  margin: 8px -4px -4px;
+  padding: 8px 4px;
+}
+/* La carte du mois : lignes plates séparées par des filets */
+.card.month-card { padding: 4px 18px; }
+.btn-year { width: 100%; }
+
 /* ---------- Accueil : rangée d'actions et carte « À compléter » ---------- */
 .home-actions { display: flex; gap: 10px; }
 .home-actions .btn { flex: 1; }
