@@ -4,11 +4,12 @@ import { summarize } from '../lib/stats'
 import {
   fmtDateTime, fmtEur, fmtKwh, fmtLiters, fmtPricePerKwh, fmtPricePerL,
 } from '../lib/format'
-import type { Fillup, Vehicle } from '../lib/types'
+import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
 import AnimatedNumber from './AnimatedNumber'
+import NearbyCard from './NearbyCard'
 import QuickCapture from './QuickCapture'
 import { Meter } from './chartKit'
-import { BoltIcon, CameraIcon, HistoryIcon, PumpIcon } from './icons'
+import { CameraIcon, HistoryIcon, PumpIcon } from './icons'
 
 interface Props {
   vehicles: Vehicle[]
@@ -107,6 +108,15 @@ export default function Home({
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '—'
   const recent = real.slice(0, 3)
 
+  // Énergies du périmètre courant → onglets de la carte « Autour de moi »
+  const nearbyEnergies = useMemo<Energy[]>(() => {
+    const scope = vehicleFilter === 'all' ? vehicles : vehicles.filter((v) => v.id === vehicleFilter)
+    const set = new Set<Energy>()
+    for (const v of scope) for (const e of energiesFor(v.fuel)) set.add(e)
+    const ordered = (['fuel', 'electric'] as Energy[]).filter((e) => set.has(e))
+    return ordered.length > 0 ? ordered : ['fuel']
+  }, [vehicles, vehicleFilter])
+
   return (
     <>
       <section className="card">
@@ -178,35 +188,7 @@ export default function Home({
         </section>
       )}
 
-      {last && (
-        <section className="card">
-          <h2>Dernier plein</h2>
-          <div className="fillup-item">
-            <div className={last.energy === 'electric' ? 'thumb ph elec' : 'thumb ph fuel'}>
-              {last.energy === 'electric' ? <BoltIcon size={22} /> : <PumpIcon size={22} />}
-            </div>
-            <div className="body">
-              <div className="date">
-                {fmtDateTime(last.filled_at)} · {vehicleName(last.vehicle_id)}
-              </div>
-              <div className="nums">
-                {last.energy === 'electric' ? fmtKwh(last.liters) : fmtLiters(last.liters)} ·{' '}
-                {fmtEur(last.total_price)}
-              </div>
-              <div className="sub">
-                {last.energy === 'electric'
-                  ? fmtPricePerKwh(last.price_per_liter)
-                  : fmtPricePerL(last.price_per_liter)}
-                {trendCts != null && Math.abs(trendCts) >= 0.05 && (
-                  <span className={trendCts > 0 ? 'trend up' : 'trend down'}>
-                    {trendCts > 0 ? '▲' : '▼'} {num(Math.abs(trendCts), 1)} cts vs ta moyenne 6 mois
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      <NearbyCard energies={nearbyEnergies} defaultEnergy={last?.energy ?? 'fuel'} />
 
       {recent.length > 0 ? (
         <section className="card">
@@ -223,6 +205,11 @@ export default function Home({
                   {f.energy === 'electric'
                     ? fmtPricePerKwh(f.price_per_liter)
                     : fmtPricePerL(f.price_per_liter)}
+                  {f.id === last?.id && trendCts != null && Math.abs(trendCts) >= 0.05 && (
+                    <span className={trendCts > 0 ? 'trend up' : 'trend down'}>
+                      {trendCts > 0 ? '▲' : '▼'} {num(Math.abs(trendCts), 1)} cts vs ta moyenne 6 mois
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

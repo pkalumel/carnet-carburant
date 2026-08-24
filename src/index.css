@@ -799,6 +799,30 @@ nav.tabs .inner > button:not(.tab-plus):active,
 /* Filtres rapides d'énergie de l'historique */
 .history-filter { margin-bottom: 4px; }
 
+/* Carte « Autour de moi » : lignes-liens vers l'itinéraire */
+.nearby-card .chips { padding-top: 0; }
+a.nearby-row {
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 64px;
+}
+.nearby-row .nums { font-family: var(--sans); font-size: 15px; }
+.nearby-row .sub {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.nearby-go {
+  color: var(--ink-64);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.nearby-note {
+  font-size: 13px;
+  color: var(--ink-64);
+  padding: 4px 0;
+}
+
 /* Note affichée à la place d'un graphe trop épars (< 3 points) */
 .chart-note {
   margin: 8px 0 4px;

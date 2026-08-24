@@ -501,6 +501,56 @@ console.log('— Encouragements —')
   await ctx.close()
 }
 
+// --------------------------- 6b. carte « Autour de moi » (accueil)
+
+console.log('— Autour de moi —')
+{
+  // Sans permission de géolocalisation : état doux, zéro erreur
+  const { ctx, page, errors } = await newSession()
+  const card = await page.locator('.nearby-card').count()
+  check('autour de moi : carte présente sur l’accueil', card === 1)
+  await page.waitForTimeout(2000)
+  const note = await page.locator('.nearby-card .nearby-note').innerText().catch(() => '')
+  check('autour de moi : état doux sans géoloc', /localisation/i.test(note), note.slice(0, 60))
+  check('zéro pageerror — autour de moi (sans géoloc)', errors.length === 0, errors.slice(0, 2).join(' | '))
+  await ctx.close()
+}
+{
+  // Géoloc accordée (Wavre) : rangées OU état doux — le réseau externe
+  // absent ne doit pas faire échouer, seule la structure est exigée
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    deviceScaleFactor: 2,
+    geolocation: { latitude: 50.717, longitude: 4.601 },
+    permissions: ['geolocation'],
+  })
+  const page = await ctx.newPage()
+  const errors = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  await page.goto(BASE)
+  if (!(await page.locator('nav.tabs').count())) {
+    await page.fill('input[type="email"]', EMAIL)
+    await page.fill('input[type="password"]', PASSWORD)
+    await page.click('form .btn.btn-primary')
+    await page.waitForSelector('nav.tabs', { timeout: 15000 })
+  }
+  await page.waitForSelector('.nearby-card', { timeout: 10000 })
+  await page.waitForTimeout(9000)
+  const rows = await page.locator('.nearby-row').count()
+  const soft = await page.locator('.nearby-card .nearby-note').count()
+  check('autour de moi : rangées ou état doux (géoloc accordée)', rows > 0 || soft > 0, `rows=${rows}`)
+  if (rows > 0) {
+    const href = await page.locator('.nearby-row').first().getAttribute('href')
+    check('autour de moi : la rangée est un lien itinéraire', /^https:\/\/maps\.apple\.com\//.test(href ?? ''))
+    const h = await page.locator('.nearby-row').first().evaluate((el) => el.getBoundingClientRect().height)
+    check('autour de moi : rangées ≥ 44 px', h >= 44, `h=${h}`)
+  }
+  check('zéro pageerror — autour de moi (géoloc)', errors.length === 0, errors.slice(0, 2).join(' | '))
+  await ctx.close()
+}
+
 // ------------------------------------------------ 7. nettoyage du plein test
 
 if (createdTestFillup) {

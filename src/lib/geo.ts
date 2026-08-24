@@ -52,4 +52,5 @@ export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
 }
 
 /** Lien carte universel (Plans sur iOS, redirigé ailleurs) */
-export const mapsUrl = (p: GeoPoint) => `https://maps.apple.com/?ll=${p.lat},${p.lng}&q=Plein`
+export const mapsUrl = (p: GeoPoint, label = 'Plein') =>
+  `https://maps.apple.com/?ll=${p.lat},${p.lng}&q=${encodeURIComponent(label)}`
