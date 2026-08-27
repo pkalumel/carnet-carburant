@@ -241,7 +241,9 @@ export default function App() {
             <span className="mark">
               <PumpIcon size={18} />
             </span>
-            Carbu<em>volt</em>
+            <span>
+              Carbu<em>volt</em>
+            </span>
           </span>
         </div>
         {/* Le filtre cadre l'accueil et la consultation ; la saisie s'ouvre en feuille */}
