@@ -1,4 +1,4 @@
-# Carnet Carburant — Spécifications fonctionnelles
+# Carbuvolt — Spécifications fonctionnelles
 
 > PWA familiale de suivi des pleins de carburant — plusieurs véhicules, plusieurs
 > utilisateurs, photos de pompe, saisie hors ligne, historique partagé et statistiques.
@@ -62,7 +62,7 @@ graph LR
     P2(["👩 Marie<br/>(pressée)"])
     P3(["🧑‍🎓 Théo<br/>(occasionnel)"])
 
-    subgraph App["Carnet Carburant"]
+    subgraph App["Carbuvolt"]
       UC1["UC1 — Saisir un plein complet"]
       UC2["UC2 — Capture rapide (photo seule)"]
       UC3["UC3 — Compléter un brouillon"]

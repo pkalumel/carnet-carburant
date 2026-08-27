@@ -59,7 +59,7 @@ export default function AuthScreen() {
       <div className="auth-logo">
         <img src="/icons/icon-192.png" alt="" />
         <h1>
-          Carnet <em>Carburant</em>
+          Carbu<em>volt</em>
         </h1>
       </div>
       <form className="card" onSubmit={submit}>

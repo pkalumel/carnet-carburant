@@ -57,7 +57,7 @@ export default function Settings({ vehicles, fillups, userId, userEmail, isAdmin
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `carnet-carburant-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `carbuvolt-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }

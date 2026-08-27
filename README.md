@@ -1,4 +1,4 @@
-# Carnet Carburant ⛽
+# Carbuvolt ⛽
 
 Application web installable (PWA) pour suivre les pleins de carburant de la famille :
 plusieurs véhicules, plusieurs utilisateurs, photos de la pompe, saisie hors ligne,

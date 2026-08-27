@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
-        name: 'Carnet Carburant',
-        short_name: 'Carburant',
+        name: 'Carbuvolt',
+        short_name: 'Carbuvolt',
         description: 'Suivi des pleins de la famille : litres, prix, kilométrage et photos de pompe.',
         lang: 'fr',
         display: 'standalone',

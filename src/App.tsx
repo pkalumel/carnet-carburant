@@ -241,7 +241,7 @@ export default function App() {
             <span className="mark">
               <PumpIcon size={18} />
             </span>
-            Carnet <em>Carburant</em>
+            Carbu<em>volt</em>
           </span>
         </div>
         {/* Le filtre cadre l'accueil et la consultation ; la saisie s'ouvre en feuille */}
@@ -277,7 +277,7 @@ export default function App() {
         <div className="netbanner pending install-banner">
           <span>
             {install.canPrompt
-              ? 'Installe Carnet Carburant sur ton écran d’accueil'
+              ? 'Installe Carbuvolt sur ton écran d’accueil'
               : 'Installe l’app : Partager → « Sur l’écran d’accueil »'}
           </span>
           {install.canPrompt && (

@@ -1,4 +1,4 @@
-# Audit UX/UI — Carnet Carburant
+# Audit UX/UI — Carbuvolt
 
 *12 août 2026 — audit en conditions réelles : iPhone 13 émulé (Playwright, navigation humaine), compte de test `pka@luka.com`, données réalistes semées via l'interface (3 véhicules, 11 pleins dont 1 partiel et 1 brouillon photo). L'audit porte sur le design « signalétique » (commit `fcb1278`) servi en local — Vercel servait encore l'ancien build au moment des captures.*
 
