@@ -23,7 +23,7 @@ function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
   const dec = (v: number | null) => (v == null ? '' : String(v).replace('.', ','))
   const esc = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
   const rows = [
-    'date;vehicule;carburant;energie;litres_ou_kwh;prix_total_eur;prix_unitaire_eur;compteur_km;plein_complet;lieu;notes;auteur',
+    'date;vehicule;carburant;energie;litres_ou_kwh;prix_total_eur;prix_unitaire_eur;compteur_km;plein_complet;estimation;batterie_avant_pct;batterie_apres_pct;lieu;notes;auteur',
     ...fillups
       .filter((f) => !f.is_draft)
       .map((f) =>
@@ -37,6 +37,9 @@ function buildCsv(fillups: Fillup[], vehicles: Vehicle[]): string {
           dec(f.price_per_liter != null ? Math.round(f.price_per_liter * 1000) / 1000 : null),
           f.odometer_km ?? '',
           f.is_full ? 'oui' : 'non',
+          f.liters_estimated ? 'oui' : 'non',
+          f.battery_before_pct ?? '',
+          f.battery_after_pct ?? '',
           esc(f.place ?? ''),
           esc(f.notes ?? ''),
           esc(f.created_by_email ?? ''),

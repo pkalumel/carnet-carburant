@@ -488,6 +488,14 @@ input.error { border-color: var(--danger); }
   margin-top: 6px;
   font-variant-numeric: tabular-nums;
 }
+/* Résultat calculé (prix unitaire, kWh estimés) : lisible, jamais saisissable */
+.calc-line {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-80);
+  font-variant-numeric: tabular-nums;
+  margin: -4px 0 4px;
+}
 
 /* Bascule « Plus de détails » du formulaire */
 .btn-more {
@@ -932,6 +940,7 @@ nav.tabs .inner > button:not(.tab-plus):active,
   margin-left: 6px;
 }
 .badge-draft { background: var(--accent); color: var(--on-accent); }
+.badge-estim { background: var(--ink-08); color: var(--ink-80); border: 1px dotted var(--ink-64); }
 .badge-partial { background: var(--ink-08); color: var(--ink-80); }
 .badge-pending { background: var(--ink-08); color: var(--ink-80); border: 1px dashed var(--ink-64); }
 .badge-elec { background: var(--ok-soft); color: var(--ok); }
@@ -1597,6 +1606,11 @@ input.suggested { color: var(--ink-64); }
   margin: 4px -24px 0;
   padding: 12px 24px max(env(safe-area-inset-bottom), 16px);
   background: var(--surface);
+}
+/* Sortie de secours quand une donnée manque : brouillon « À compléter » */
+.btn-later {
+  width: 100%;
+  margin-top: 8px;
 }
 
 /* ---------- Console d'administration (disposition « tableau d'abord ») ---------- */

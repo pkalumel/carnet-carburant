@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { saveFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
-import { fmtDateTime, fmtKm, parseDecimal, toLocalInputValue } from '../lib/format'
+import { fmtDateTime, toLocalInputValue } from '../lib/format'
 import { captureLocation, reverseGeocode, type GeoPoint } from '../lib/geo'
-import { checkFillup } from '../lib/plausibility'
-import {
-  derivedField, editField, emptyTriangle, setSourceValue, triangleValues, type Triangle,
-} from '../lib/triangle'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
+import { EntryFields, PctFieldsOptional, useEntryState } from './EntryFields'
 import { LAST_VEHICLE_KEY } from './QuickCapture'
 import { AttachIcon, BoltIcon, PinIcon, PumpIcon, SaveIcon, XIcon } from './icons'
 
@@ -21,9 +18,6 @@ interface Props {
   onSaved: (status: 'synced' | 'queued', draft: boolean) => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
-
-type ChargePlace = 'home' | 'station'
-const PLACE_KEY = 'carnet:chargePlace'
 
 /** « Aujourd'hui, 18:15 » / « Hier, 09:40 » / date complète */
 function dateLabel(value: string): string {
@@ -51,28 +45,15 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     )
   })
   const [energyChoice, setEnergyChoice] = useState<Energy | null>(defaultEnergy ?? null)
-  const [triangle, setTriangle] = useState<Triangle>(emptyTriangle)
-  const [odo, setOdo] = useState('')
-  const [odoTouched, setOdoTouched] = useState(false)
   const [dateStr, setDateStr] = useState(() => toLocalInputValue(new Date()))
   const [dateOpen, setDateOpen] = useState(false)
-  const [chargePlace, setChargePlace] = useState<ChargePlace>(
-    () => (localStorage.getItem(PLACE_KEY) === 'station' ? 'station' : 'home'),
-  )
   const [isFull, setIsFull] = useState(true)
   const [notes, setNotes] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
-  /** avertissements écartés d'un « C'est normal » — ne reviennent pas pour cette saisie */
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [showMore, setShowMore] = useState(false)
-  const [errors, setErrors] = useState<{ volume?: string; total?: string }>({})
 
   const attachInput = useRef<HTMLInputElement>(null)
-  const volumeInput = useRef<HTMLInputElement>(null)
-  const totalInput = useRef<HTMLInputElement>(null)
-  const unitInput = useRef<HTMLInputElement>(null)
-  const odoInput = useRef<HTMLInputElement>(null)
 
   // Lieu de la saisie : capturé à l'ouverture, retirable, jamais bloquant
   const [geo, setGeo] = useState<GeoPoint | null>(null)
@@ -98,46 +79,8 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
   const energies = energiesFor(vehicle?.fuel ?? null)
   const energy: Energy = energyChoice && energies.includes(energyChoice) ? energyChoice : energies[0]
   const electric = energy === 'electric'
-  const homePricing = electric && vehicle?.home_kwh_price != null
 
-  // Dernier kilométrage connu + delta médian : le compteur est pré-rempli
-  // en « suggéré », l'utilisateur tape par-dessus (select() au focus).
-  const { lastOdo, suggestedOdo } = useMemo(() => {
-    const mine = fillups
-      .filter((f) => f.vehicle_id === vehicleId && !f.is_draft && f.odometer_km != null)
-      .sort((a, b) => (a.filled_at < b.filled_at ? -1 : 1))
-    const odos = mine.map((f) => f.odometer_km as number)
-    const last = odos.length > 0 ? Math.max(...odos) : null
-    const deltas: number[] = []
-    for (let i = 1; i < odos.length; i++) {
-      const d = odos[i] - odos[i - 1]
-      if (d > 0) deltas.push(d)
-    }
-    const recent = deltas.slice(-6).sort((a, b) => a - b)
-    const median = recent.length > 0 ? recent[Math.floor(recent.length / 2)] : null
-    return { lastOdo: last, suggestedOdo: last != null && median != null ? last + median : null }
-  }, [fillups, vehicleId])
-
-  // Changement de véhicule ou d'énergie : le triangle repart à zéro
-  // (les litres d'une Clio ne sont pas les kWh d'une Zoé)
-  useEffect(() => {
-    setTriangle(emptyTriangle())
-    setErrors({})
-  }, [vehicleId, energy])
-
-  // Recharge « Maison » : le tarif du véhicule devient la source prix/kWh
-  useEffect(() => {
-    if (homePricing && chargePlace === 'home' && vehicle?.home_kwh_price != null) {
-      const tarif = String(vehicle.home_kwh_price).replace('.', ',')
-      setTriangle((t) => setSourceValue(t, 'unit', tarif))
-    }
-  }, [homePricing, chargePlace, vehicle?.home_kwh_price, vehicleId, energy])
-
-  // Compteur suggéré à l'arrivée sur un véhicule
-  useEffect(() => {
-    setOdo(suggestedOdo != null ? String(suggestedOdo) : '')
-    setOdoTouched(false)
-  }, [vehicleId, suggestedOdo])
+  const entry = useEntryState({ vehicle, energy, fillups, dateStr })
 
   // Le dernier choix complet/partiel est mémorisé par énergie
   const storedFull = (en: Energy) => {
@@ -151,33 +94,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     setIsFull(v)
     localStorage.setItem(`carnet:isFull:${energy}`, v ? '1' : '0')
   }
-  function choosePlace(p: ChargePlace) {
-    setChargePlace(p)
-    localStorage.setItem(PLACE_KEY, p)
-    if (p === 'station') {
-      // le tarif maison cesse d'être imposé : le prix redevient dérivé
-      setTriangle((t) => ({ ...t, unit: '', sources: ['volume', 'total'] }))
-    }
-  }
-
-  const odoNum = parseDecimal(odo)
-  const vals = triangleValues(triangle)
-  const derived = derivedField(triangle)
-
-  // Garde-fous de plausibilité : avertissent, ne bloquent jamais
-  const warnings = useMemo(
-    () =>
-      checkFillup({
-        vehicleId,
-        energy,
-        odometerKm: odoNum,
-        volume: vals.volume,
-        unitPrice: vals.unit,
-        fillups,
-        lastOdo,
-      }),
-    [vehicleId, energy, odoNum, vals.volume, vals.unit, fillups, lastOdo],
-  ).filter((w) => !dismissed.has(w.id))
 
   // La vignette de la photo jointe remplace le nom de fichier brut
   const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo])
@@ -187,42 +103,18 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     }
   }, [photoUrl])
 
-  function focusWarnField(field: 'odo' | 'volume' | 'unit' | undefined) {
-    const ref = field === 'odo' ? odoInput : field === 'unit' ? unitInput : volumeInput
-    ref.current?.focus()
-    ref.current?.select()
-  }
-
   function resetForm() {
-    setTriangle(emptyTriangle())
-    setOdo(suggestedOdo != null ? String(suggestedOdo) : '')
-    setOdoTouched(false)
+    entry.reset()
     setDateStr(toLocalInputValue(new Date()))
     setDateOpen(false)
     setIsFull(storedFull(energy))
     setNotes('')
     setPhoto(null)
-    setDismissed(new Set())
-    setErrors({})
     setShowMore(false)
     if (attachInput.current) attachInput.current.value = ''
   }
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    const errs: { volume?: string; total?: string } = {}
-    if (vals.volume == null || vals.volume <= 0)
-      errs.volume = electric ? 'Indique les kWh' : 'Indique les litres'
-    if (vals.total == null || vals.total < 0) errs.total = 'Indique le prix total'
-    setErrors(errs)
-    if (errs.volume) {
-      volumeInput.current?.focus()
-      return
-    }
-    if (errs.total) {
-      totalInput.current?.focus()
-      return
-    }
+  async function save(draft: boolean) {
     setBusy(true)
     try {
       const blob = photo ? await downscalePhoto(photo) : null
@@ -231,11 +123,9 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
           vehicle_id: vehicleId,
           filled_at: new Date(dateStr).toISOString(),
           energy,
-          odometer_km: odoNum != null ? Math.round(odoNum) : null,
-          liters: vals.volume as number,
-          total_price: vals.total as number,
+          ...entry.buildInput(),
           is_full: isFull,
-          is_draft: false,
+          is_draft: draft,
           notes: notes.trim() || null,
           lat: geoOff ? null : (geo?.lat ?? null),
           lng: geoOff ? null : (geo?.lng ?? null),
@@ -246,7 +136,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
       )
       localStorage.setItem(LAST_VEHICLE_KEY, vehicleId)
       resetForm()
-      onSaved(status, false)
+      onSaved(status, draft)
     } catch {
       showToast('Enregistrement impossible', 'err')
     } finally {
@@ -254,43 +144,10 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
     }
   }
 
-  const unitAffix = electric ? '€/kWh' : '€/L'
-  const volAffix = electric ? 'kWh' : 'L'
-
-  const numField = (
-    field: 'volume' | 'total' | 'unit',
-    label: string,
-    affix: string,
-    ref?: React.RefObject<HTMLInputElement | null>,
-    error?: string,
-    enterHint: 'next' | 'done' = 'next',
-    autoFocus = false,
-  ) => {
-    const isDerived = derived === field && triangle[field] !== ''
-    return (
-      <label className="field">
-        <span className="lbl">{label}</span>
-        <div className={isDerived ? 'input-affix calc' : 'input-affix'}>
-          {isDerived && <span className="affix affix-left">=</span>}
-          <input
-            ref={ref}
-            type="text"
-            inputMode="decimal"
-            enterKeyHint={enterHint}
-            autoFocus={autoFocus}
-            className={error ? 'error' : ''}
-            value={triangle[field]}
-            onChange={(e) => {
-              setTriangle((t) => editField(t, field, e.target.value))
-              if (errors[field as 'volume' | 'total'])
-                setErrors((p) => ({ ...p, [field]: undefined }))
-            }}
-          />
-          <span className="affix">{affix}</span>
-        </div>
-        {error && <span className="field-error">{error}</span>}
-      </label>
-    )
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!entry.validate()) return
+    await save(false)
   }
 
   return (
@@ -336,58 +193,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
           </div>
         )}
 
-        {homePricing && (
-          <div className="field">
-            <span className="lbl">Lieu de recharge</span>
-            <div className="seg">
-              <button type="button" className={chargePlace === 'home' ? 'active' : ''} onClick={() => choosePlace('home')}>
-                Maison
-              </button>
-              <button type="button" className={chargePlace === 'station' ? 'active' : ''} onClick={() => choosePlace('station')}>
-                Borne
-              </button>
-            </div>
-            {chargePlace === 'home' && vehicle?.home_kwh_price != null && (
-              <span className="field-hint">
-                Tarif maison appliqué : {String(vehicle.home_kwh_price).replace('.', ',')} €/kWh
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="field-grid">
-          {numField('volume', volAffix === 'kWh' ? 'kWh' : 'Litres', volAffix, volumeInput, errors.volume, 'next', true)}
-          {numField('total', 'Prix total', '€', totalInput, errors.total)}
-        </div>
-        <div className="field-grid">
-          {numField('unit', electric ? 'Prix au kWh' : 'Prix au litre', unitAffix, unitInput)}
-          <label className="field">
-            <span className="lbl">Compteur</span>
-            <div className="input-affix">
-              <input
-                ref={odoInput}
-                type="text"
-                inputMode="numeric"
-                enterKeyHint="done"
-                className={odoTouched || odo === '' ? '' : 'suggested'}
-                value={odo}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  setOdo(e.target.value)
-                  setOdoTouched(true)
-                }}
-              />
-              <span className="affix">km</span>
-            </div>
-            {!odoTouched && suggestedOdo != null && odo !== '' ? (
-              <span className="field-hint">
-                Suggéré : dernier relevé {fmtKm(lastOdo)} + habitude
-              </span>
-            ) : lastOdo != null ? (
-              <span className="field-hint">Dernier relevé : {fmtKm(lastOdo)}</span>
-            ) : null}
-          </label>
-        </div>
+        <EntryFields state={entry} autoFocus />
 
         <div className="field">
           <span className="lbl">{electric ? 'Charge' : 'Plein'}</span>
@@ -407,28 +213,6 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
             </span>
           )}
         </div>
-
-        {warnings.map((w) => (
-          <div key={w.id} className="field-warn" role="status">
-            <div className="warn-msg">
-              <span aria-hidden>⚠</span> {w.msg}
-            </div>
-            <div className="warn-actions">
-              {w.field && (
-                <button type="button" className="warn-btn" onClick={() => focusWarnField(w.field)}>
-                  Corriger
-                </button>
-              )}
-              <button
-                type="button"
-                className="warn-btn"
-                onClick={() => setDismissed((d) => new Set(d).add(w.id))}
-              >
-                C’est normal
-              </button>
-            </div>
-          </div>
-        ))}
 
         {geo && !geoOff && (
           <div className="geo-line">
@@ -499,7 +283,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
           className={showMore ? 'btn-more open' : 'btn-more'}
           onClick={() => setShowMore(!showMore)}
         >
-          {showMore ? 'Masquer photo et notes' : 'Photo et notes'}
+          {showMore ? 'Masquer photo et détails' : 'Photo et détails'}
           <svg
             className="chev"
             width="16"
@@ -518,6 +302,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
 
         {showMore && (
           <>
+            <PctFieldsOptional state={entry} />
             <label className="field">
               <span className="lbl">Notes (optionnel)</span>
               <input
@@ -563,6 +348,16 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
           <SaveIcon />{' '}
           {busy ? 'Enregistrement…' : electric ? 'Enregistrer la recharge' : 'Enregistrer le plein'}
         </button>
+        {entry.missing.length > 0 && (
+          <button
+            type="button"
+            className="btn-ghost btn-later"
+            disabled={busy}
+            onClick={() => void save(true)}
+          >
+            Enregistrer et compléter plus tard
+          </button>
+        )}
       </div>
     </form>
   )

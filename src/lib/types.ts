@@ -7,6 +7,8 @@ export interface Vehicle {
   fuel: string | null
   /** tarif électricité à domicile (€/kWh) — recharge « Maison » pré-tarifée */
   home_kwh_price: number | null
+  /** capacité utile de la batterie (kWh) — recharge domicile estimée par % */
+  battery_kwh: number | null
   created_at: string
 }
 
@@ -47,6 +49,11 @@ export interface Fillup {
   price_per_liter: number | null
   is_full: boolean
   is_draft: boolean
+  /** niveaux de batterie relevés (recharge) — sources de l'estimation, ou facultatifs en borne */
+  battery_before_pct: number | null
+  battery_after_pct: number | null
+  /** vrai si liters (kWh) et total_price sont estimés depuis les % de batterie */
+  liters_estimated: boolean
   photo_path: string | null
   notes: string | null
   /** position au moment de la saisie (optionnelle) + libellé lisible */
@@ -69,6 +76,9 @@ export interface FillupInput {
   total_price: number | null
   is_full: boolean
   is_draft: boolean
+  battery_before_pct: number | null
+  battery_after_pct: number | null
+  liters_estimated: boolean
   notes: string | null
   lat: number | null
   lng: number | null

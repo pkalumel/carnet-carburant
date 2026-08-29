@@ -1,13 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { fillupStatus } from '../lib/completeness'
 import { deleteFillup, getPhotoUrl, updateFillup } from '../lib/db'
 import { downscalePhoto } from '../lib/image'
 import {
   fmtConso, fmtConsoElec, fmtDateTime, fmtEur, fmtKm, fmtKwh, fmtLiters, fmtPricePerKwh,
-  fmtPricePerL, parseDecimal, toLocalInputValue,
+  fmtPricePerL, toLocalInputValue,
 } from '../lib/format'
 import { mapsUrl } from '../lib/geo'
 import { consumptionSeries, summarize, type ConsoPoint } from '../lib/stats'
 import { Meter } from './chartKit'
+import { EntryFields, PctFieldsOptional, useEntryState } from './EntryFields'
 import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
 import { AttachIcon, BoltIcon, ClockIcon, PinIcon, PumpIcon, SaveIcon, TrashIcon, XIcon } from './icons'
 
@@ -74,9 +76,6 @@ function Editor({
   const [vehicleId, setVehicleId] = useState(fillup.vehicle_id)
   const [energyChoice, setEnergyChoice] = useState<Energy>(fillup.energy)
   const [dateStr, setDateStr] = useState(toLocalInputValue(new Date(fillup.filled_at)))
-  const [odo, setOdo] = useState(fillup.odometer_km?.toString() ?? '')
-  const [liters, setLiters] = useState(fillup.liters?.toString() ?? '')
-  const [price, setPrice] = useState(fillup.total_price?.toString() ?? '')
   const [isFull, setIsFull] = useState(fillup.is_full)
   const [notes, setNotes] = useState(fillup.notes ?? '')
   const [newPhoto, setNewPhoto] = useState<File | null>(null)
@@ -90,44 +89,22 @@ function Editor({
   const energy: Energy = energies.includes(energyChoice) ? energyChoice : energies[0]
   const electric = energy === 'electric'
 
-  // Plein précédent du véhicule choisi, à la date saisie (le plein édité exclu)
-  const editedTime = new Date(dateStr).getTime()
-  const prevOdo = useMemo(() => {
-    let max: number | null = null
-    for (const f of allFillups) {
-      if (
-        f.id === fillup.id ||
-        f.vehicle_id !== vehicleId ||
-        f.is_draft ||
-        f.odometer_km == null ||
-        new Date(f.filled_at).getTime() >= editedTime
-      )
-        continue
-      if (max == null || f.odometer_km > max) max = f.odometer_km
-    }
-    return max
-  }, [allFillups, fillup.id, vehicleId, editedTime])
-
-  const odoNum = parseDecimal(odo)
-  const odoError =
-    odoNum != null && prevOdo != null && Math.round(odoNum) <= prevOdo
-      ? `Doit dépasser ${fmtKm(prevOdo)} (plein précédent)`
-      : null
+  // Même zone « chiffres » que la création : 3 champs par mode, prix
+  // unitaire calculé, garde-fous partagés (compteur en baisse compris —
+  // avertissement, plus jamais bloquant)
+  const entry = useEntryState({ vehicle, energy, fillups: allFillups, initial: fillup, dateStr })
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const litersNum = parseDecimal(liters)
-    const priceNum = parseDecimal(price)
-    if (!litersNum || litersNum <= 0 || priceNum == null || priceNum < 0) {
+    if (!entry.validate()) {
       showToast(
         electric
-          ? 'kWh et prix total sont requis pour compléter la recharge'
+          ? 'Complète les champs requis de la recharge'
           : 'Litres et prix total sont requis pour compléter le plein',
         'err',
       )
       return
     }
-    if (odoError) return
     setBusy(true)
     try {
       const blob = newPhoto ? await downscalePhoto(newPhoto) : null
@@ -137,9 +114,7 @@ function Editor({
           vehicle_id: vehicleId,
           filled_at: new Date(dateStr).toISOString(),
           energy,
-          odometer_km: odoNum != null ? Math.round(odoNum) : null,
-          liters: litersNum,
-          total_price: priceNum,
+          ...entry.buildInput(),
           is_full: isFull,
           is_draft: false,
           notes: notes.trim() || null,
@@ -206,44 +181,7 @@ function Editor({
           </div>
         </div>
       )}
-      <div className="field-grid">
-        <label className="field">
-          <span className="lbl">{electric ? 'kWh' : 'Litres'}</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            autoFocus={fillup.is_draft}
-            placeholder={electric ? '38,20' : '42,50'}
-            value={liters}
-            onChange={(e) => setLiters(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="lbl">Prix total (€)</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder={electric ? '18,40' : '72,30'}
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-        </label>
-      </div>
-      <label className="field">
-        <span className="lbl">Compteur (km)</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          className={odoError ? 'error' : ''}
-          value={odo}
-          onChange={(e) => setOdo(e.target.value)}
-        />
-        {odoError ? (
-          <span className="field-error">{odoError}</span>
-        ) : prevOdo != null ? (
-          <span className="field-hint">Plein précédent : {fmtKm(prevOdo)}</span>
-        ) : null}
-      </label>
+      <EntryFields state={entry} autoFocus={fillup.is_draft} />
       {vehicles.length > 1 && (
         <div className="field">
           <span className="lbl">Véhicule</span>
@@ -276,6 +214,7 @@ function Editor({
           </button>
         </div>
       </div>
+      <PctFieldsOptional state={entry} />
       <label className="field">
         <span className="lbl">Notes</span>
         <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -725,6 +664,11 @@ export default function History({
                     <td>
                       {electric && <span className="badge badge-elec">⚡ Recharge</span>}
                       {f.is_draft && <span className="badge badge-draft">À compléter</span>}
+                      {fillupStatus(f) === 'estimated' && (
+                        <span className="badge badge-estim" title="kWh et coût estimés depuis les % de batterie">
+                          Estimé
+                        </span>
+                      )}
                       {f.pending && (
                     <span className="pending-dot" title="En attente de synchronisation">
                       <ClockIcon size={13} />
@@ -799,6 +743,11 @@ export default function History({
                   {fmtDateTime(f.filled_at)} · {vehicleName(f.vehicle_id)}
                   {electric && <span className="badge badge-elec">⚡ Recharge</span>}
                   {f.is_draft && <span className="badge badge-draft">À compléter</span>}
+                  {fillupStatus(f) === 'estimated' && (
+                    <span className="badge badge-estim" title="kWh et coût estimés depuis les % de batterie">
+                      Estimé
+                    </span>
+                  )}
                   {f.pending && (
                     <span className="pending-dot" title="En attente de synchronisation">
                       <ClockIcon size={13} />

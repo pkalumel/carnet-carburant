@@ -47,7 +47,7 @@ export interface MonthCost {
 export function monthlyCosts(fillups: Fillup[]): MonthCost[] {
   const map = new Map<string, number>()
   for (const f of fillups) {
-    if (f.total_price == null) continue
+    if (f.is_draft || f.total_price == null) continue
     const month = f.filled_at.slice(0, 7)
     map.set(month, (map.get(month) ?? 0) + f.total_price)
   }
@@ -66,7 +66,7 @@ export interface MonthCostByVehicle {
 export function monthlyCostsByVehicle(fillups: Fillup[]): MonthCostByVehicle[] {
   const map = new Map<string, Record<string, number>>()
   for (const f of fillups) {
-    if (f.total_price == null) continue
+    if (f.is_draft || f.total_price == null) continue
     const month = f.filled_at.slice(0, 7)
     const totals = map.get(month) ?? {}
     totals[f.vehicle_id] = (totals[f.vehicle_id] ?? 0) + f.total_price
@@ -87,8 +87,9 @@ export interface PricePoint {
 }
 
 export function priceSeries(fillups: Fillup[], energy: Energy = 'fuel'): PricePoint[] {
+  // les tarifs estimés (recharge domicile) ne sont pas des prix de marché
   return fillups
-    .filter((f) => f.price_per_liter != null && f.energy === energy)
+    .filter((f) => !f.is_draft && !f.liters_estimated && f.price_per_liter != null && f.energy === energy)
     .map((f) => ({ date: f.filled_at, price: f.price_per_liter as number }))
     .sort((a, b) => a.date.localeCompare(b.date))
 }

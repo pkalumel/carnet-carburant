@@ -1,10 +1,11 @@
-import { fmtConso, fmtConsoElec, fmtKm, fmtPricePerKwh, fmtPricePerL } from './format'
+import { fmtConso, fmtConsoElec, fmtKm, fmtKwh, fmtPricePerKwh, fmtPricePerL } from './format'
 import { summarize } from './stats'
 import type { Energy, Fillup } from './types'
 
 /**
  * Garde-fous de plausibilité de la saisie : ils AVERTISSENT, ils ne
  * bloquent jamais — l'utilisateur en station a raison contre l'algorithme.
+ * (Seul le « % après ≤ % avant » bloque, et il vit dans entryModel.ts.)
  */
 export interface PlausibilityInput {
   vehicleId: string
@@ -12,6 +13,12 @@ export interface PlausibilityInput {
   odometerKm: number | null
   volume: number | null
   unitPrice: number | null
+  /** capacité utile de la batterie du véhicule, si connue */
+  batteryKwh: number | null
+  /** date de la saisie (détection de doublon) */
+  filledAt: string
+  /** en édition : l'enregistrement lui-même n'est pas son propre doublon */
+  excludeId?: string | null
   /** liste complète des pleins (tous véhicules) */
   fillups: Fillup[]
   /** dernier compteur connu du véhicule */
@@ -23,7 +30,7 @@ export interface PlausibilityWarning {
   id: string
   msg: string
   /** champ à corriger, si l'avertissement en désigne un */
-  field?: 'odo' | 'volume' | 'unit'
+  field?: 'odo' | 'volume' | 'total'
 }
 
 const PRICE_BOUNDS = {
@@ -31,9 +38,13 @@ const PRICE_BOUNDS = {
   electric: { min: 0.05, max: 1.2, fmt: fmtPricePerKwh },
 }
 
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000
+
 export function checkFillup(input: PlausibilityInput): PlausibilityWarning[] {
   const warnings: PlausibilityWarning[] = []
-  const { energy, odometerKm, volume, unitPrice, fillups, lastOdo, vehicleId } = input
+  const {
+    energy, odometerKm, volume, unitPrice, batteryKwh, filledAt, excludeId, fillups, lastOdo, vehicleId,
+  } = input
 
   if (odometerKm != null && lastOdo != null && Math.round(odometerKm) <= lastOdo) {
     warnings.push({
@@ -43,10 +54,40 @@ export function checkFillup(input: PlausibilityInput): PlausibilityWarning[] {
     })
   }
 
+  // Le prix unitaire n'est plus saisi : il se corrige via le prix total
   if (unitPrice != null && unitPrice > 0) {
     const b = PRICE_BOUNDS[energy]
     if (unitPrice < b.min || unitPrice > b.max) {
-      warnings.push({ id: 'prix-inhabituel', field: 'unit', msg: `Prix inhabituel : ${b.fmt(unitPrice)}.` })
+      warnings.push({
+        id: 'prix-inhabituel',
+        field: 'total',
+        msg: `Prix inhabituel : ${b.fmt(unitPrice)} — vérifie le prix total.`,
+      })
+    }
+  }
+
+  if (energy === 'electric' && volume != null && batteryKwh != null && volume > batteryKwh) {
+    warnings.push({
+      id: 'kwh-capacite',
+      field: 'volume',
+      msg: `${fmtKwh(volume)} saisis pour une batterie de ${fmtKwh(batteryKwh)} — vérifie.`,
+    })
+  }
+
+  // Doublon probable : une saisie du même véhicule à moins de 10 minutes
+  const t = new Date(filledAt).getTime()
+  if (Number.isFinite(t)) {
+    const dup = fillups.find(
+      (f) =>
+        f.vehicle_id === vehicleId &&
+        f.id !== excludeId &&
+        Math.abs(new Date(f.filled_at).getTime() - t) < DUPLICATE_WINDOW_MS,
+    )
+    if (dup) {
+      warnings.push({
+        id: 'doublon',
+        msg: 'Une saisie existe déjà pour ce véhicule il y a moins de 10 minutes — doublon ?',
+      })
     }
   }
 

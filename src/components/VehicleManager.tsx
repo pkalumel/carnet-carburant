@@ -57,6 +57,9 @@ function Editor({
   const [homePrice, setHomePrice] = useState(
     vehicle.home_kwh_price != null ? String(vehicle.home_kwh_price).replace('.', ',') : '',
   )
+  const [battery, setBattery] = useState(
+    vehicle.battery_kwh != null ? String(vehicle.battery_kwh).replace('.', ',') : '',
+  )
   const [confirming, setConfirming] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const nameMatches = confirmText.trim().toLowerCase() === vehicle.name.trim().toLowerCase()
@@ -71,6 +74,7 @@ function Editor({
         plate: plate.trim() || null,
         fuel,
         home_kwh_price: energiesFor(fuel).includes('electric') ? parseDecimal(homePrice) : null,
+        battery_kwh: energiesFor(fuel).includes('electric') ? parseDecimal(battery) : null,
       })
       showToast('Véhicule modifié ✓')
       onDone(true)
@@ -108,19 +112,34 @@ function Editor({
       </div>
       <FuelChips value={fuel} onChange={setFuel} />
       {energiesFor(fuel).includes('electric') && (
-        <label className="field">
-          <span className="lbl">Tarif maison (€/kWh)</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={homePrice}
-            onChange={(e) => setHomePrice(e.target.value)}
-            placeholder="0,2470"
-          />
-          <span className="field-hint">
-            Appliqué automatiquement quand tu recharges à la maison.
-          </span>
-        </label>
+        <>
+          <label className="field">
+            <span className="lbl">Tarif maison (€/kWh)</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={homePrice}
+              onChange={(e) => setHomePrice(e.target.value)}
+              placeholder="0,2470"
+            />
+            <span className="field-hint">
+              Appliqué automatiquement quand tu recharges à la maison.
+            </span>
+          </label>
+          <label className="field">
+            <span className="lbl">Capacité utile de la batterie (kWh)</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={battery}
+              onChange={(e) => setBattery(e.target.value)}
+              placeholder="52"
+            />
+            <span className="field-hint">
+              Sert au mode « À domicile » : kWh estimés depuis les % de batterie.
+            </span>
+          </label>
+        </>
       )}
       <button className="btn btn-primary" disabled={busy}>
         <SaveIcon /> Enregistrer

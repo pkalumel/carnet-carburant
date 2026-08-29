@@ -42,7 +42,13 @@ export async function addVehicle(
 
 export async function updateVehicle(
   id: string,
-  patch: { name: string; plate: string | null; fuel: string | null; home_kwh_price: number | null },
+  patch: {
+    name: string
+    plate: string | null
+    fuel: string | null
+    home_kwh_price: number | null
+    battery_kwh: number | null
+  },
 ): Promise<void> {
   const { error } = await supabase.from('vehicles').update(patch).eq('id', id)
   if (error) throw new Error(`Modification impossible : ${error.message}`)
@@ -66,6 +72,10 @@ function pendingToFillup(p: PendingFillup): Fillup {
   return {
     id: p.localId,
     ...input,
+    // entrées mises en file avant la migration : les nouveaux champs manquent
+    battery_before_pct: input.battery_before_pct ?? null,
+    battery_after_pct: input.battery_after_pct ?? null,
+    liters_estimated: input.liters_estimated ?? false,
     price_per_liter: ppl,
     photo_path: null,
     created_by: null, // renseigné par le serveur à la synchronisation
@@ -90,18 +100,30 @@ export async function loadFillups(): Promise<Fillup[]> {
   }
   const pending = (await listOutbox()).map(pendingToFillup)
   return [...pending, ...rows]
-    .map((f) => (f.energy ? f : { ...f, energy: 'fuel' as const })) // lignes d'avant la migration
+    .map((f) => ({
+      // lignes du cache ou du serveur d'avant les migrations
+      ...f,
+      energy: f.energy ?? ('fuel' as const),
+      battery_before_pct: f.battery_before_pct ?? null,
+      battery_after_pct: f.battery_after_pct ?? null,
+      liters_estimated: f.liters_estimated ?? false,
+    }))
     .sort((a, b) => new Date(b.filled_at).getTime() - new Date(a.filled_at).getTime())
 }
 
-/** Insertion avec repli si la colonne energy n'existe pas encore côté serveur */
+/** Colonnes ajoutées par migrations : retirées une à une si la base n'est pas à jour */
+const OPTIONAL_COLS = ['energy', 'battery_before_pct', 'battery_after_pct', 'liters_estimated']
+
+/** Insertion avec repli si une colonne récente n'existe pas encore côté serveur */
 async function insertFillup(row: Record<string, unknown>): Promise<void> {
-  let { error } = await supabase.from('fillups').insert(row)
-  if (error && error.message.includes('energy')) {
-    const { energy: _energy, ...rest } = row
-    ;({ error } = await supabase.from('fillups').insert(rest))
+  const attempt = { ...row }
+  for (let i = 0; i <= OPTIONAL_COLS.length; i++) {
+    const { error } = await supabase.from('fillups').insert(attempt)
+    if (!error) return
+    const missing = OPTIONAL_COLS.find((c) => c in attempt && error.message.includes(c))
+    if (!missing) throw error
+    delete attempt[missing]
   }
-  if (error) throw error
 }
 
 async function uploadPhoto(id: string, photo: Blob): Promise<string> {
@@ -168,8 +190,15 @@ export async function updateFillup(
     const photo_path = await uploadPhoto(id, newPhoto)
     photoPatch = { photo_path }
   }
-  const { error } = await supabase.from('fillups').update({ ...patch, ...photoPatch }).eq('id', id)
-  if (error) throw new Error(`Modification impossible : ${error.message}`)
+  // Même repli « colonne absente » que l'insertion (base pas encore migrée)
+  const attempt: Record<string, unknown> = { ...patch, ...photoPatch }
+  for (let i = 0; i <= OPTIONAL_COLS.length; i++) {
+    const { error } = await supabase.from('fillups').update(attempt).eq('id', id)
+    if (!error) return
+    const missing = OPTIONAL_COLS.find((c) => c in attempt && error.message.includes(c))
+    if (!missing) throw new Error(`Modification impossible : ${error.message}`)
+    delete attempt[missing]
+  }
 }
 
 export async function deleteFillup(f: Fillup): Promise<void> {
