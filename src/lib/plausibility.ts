@@ -15,6 +15,8 @@ export interface PlausibilityInput {
   unitPrice: number | null
   /** capacité utile de la batterie du véhicule, si connue */
   batteryKwh: number | null
+  /** véhicule bi-énergie (hybride rechargeable) : km partagés entre énergies */
+  biEnergy: boolean
   /** date de la saisie (détection de doublon) */
   filledAt: string
   /** en édition : l'enregistrement lui-même n'est pas son propre doublon */
@@ -40,10 +42,18 @@ const PRICE_BOUNDS = {
 
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000
 
+/**
+ * Une borne facture l'énergie DÉLIVRÉE (côté réseau) ; la batterie en stocke
+ * moins — pertes de conversion typiques de 8 à 20 %. Dépasser la capacité
+ * utile est donc normal pour une charge complète : on ne signale qu'au-delà
+ * d'une marge large, où il s'agit presque sûrement d'une faute de frappe.
+ */
+const CHARGE_LOSS_FACTOR = 1.35
+
 export function checkFillup(input: PlausibilityInput): PlausibilityWarning[] {
   const warnings: PlausibilityWarning[] = []
   const {
-    energy, odometerKm, volume, unitPrice, batteryKwh, filledAt, excludeId, fillups, lastOdo, vehicleId,
+    energy, odometerKm, volume, unitPrice, batteryKwh, biEnergy, filledAt, excludeId, fillups, lastOdo, vehicleId,
   } = input
 
   if (odometerKm != null && lastOdo != null && Math.round(odometerKm) <= lastOdo) {
@@ -66,11 +76,16 @@ export function checkFillup(input: PlausibilityInput): PlausibilityWarning[] {
     }
   }
 
-  if (energy === 'electric' && volume != null && batteryKwh != null && volume > batteryKwh) {
+  if (
+    energy === 'electric' &&
+    volume != null &&
+    batteryKwh != null &&
+    volume > batteryKwh * CHARGE_LOSS_FACTOR
+  ) {
     warnings.push({
       id: 'kwh-capacite',
       field: 'volume',
-      msg: `${fmtKwh(volume)} saisis pour une batterie de ${fmtKwh(batteryKwh)} — vérifie.`,
+      msg: `${fmtKwh(volume)} saisis pour une batterie de ${fmtKwh(batteryKwh)} — trop, même pertes de recharge comprises. Vérifie.`,
     })
   }
 
@@ -93,7 +108,10 @@ export function checkFillup(input: PlausibilityInput): PlausibilityWarning[] {
 
   // Conso implicite vs moyenne du véhicule (±40 %) — approximation sur la
   // distance depuis le dernier relevé, suffisante pour un avertissement.
+  // Jamais sur un bi-énergie : ses km sont propulsés par les deux énergies,
+  // la conso par énergie sur la distance totale varie donc avec le trajet.
   if (
+    !biEnergy &&
     odometerKm != null &&
     lastOdo != null &&
     odometerKm > lastOdo &&

@@ -455,6 +455,9 @@ input:focus-visible, textarea:focus-visible, select.input:focus-visible {
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
 }
+/* Sans min-width, une colonne de grille refuse de rétrécir sous la largeur
+   d'un libellé en nowrap et fait déborder toute la grille de la feuille */
+.field-grid > .field { min-width: 0; }
 /* Dans une grille, un libellé qui déborde ne doit pas décaler son champ */
 .field-grid .lbl {
   white-space: nowrap;

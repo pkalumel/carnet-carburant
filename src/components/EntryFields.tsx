@@ -6,7 +6,7 @@ import {
 import { fmtEur, fmtKm, fmtKwh, fmtPricePerKwh, fmtPricePerL, parseDecimal } from '../lib/format'
 import { checkFillup } from '../lib/plausibility'
 import { editField, emptyTriangle, triangleValues, type Triangle } from '../lib/triangle'
-import type { Energy, Fillup, Vehicle } from '../lib/types'
+import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
 
 /**
  * Zone « chiffres » partagée entre la création (FillupForm) et l'édition
@@ -161,13 +161,14 @@ export function useEntryState({ vehicle, energy, fillups, initial = null, dateSt
         // en mode domicile le €/kWh est le tarif choisi par l'utilisateur
         unitPrice: mode === 'home' ? null : vals.unit,
         batteryKwh,
+        biEnergy: energiesFor(vehicle?.fuel ?? null).length > 1,
         filledAt: dateStr,
         excludeId: initial?.id ?? null,
         fillups,
         lastOdo,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vehicleId, energy, odoNum, mode, estimate?.kwh, vals.volume, vals.unit, batteryKwh, dateStr, initial?.id, fillups, lastOdo],
+    [vehicleId, vehicle?.fuel, energy, odoNum, mode, estimate?.kwh, vals.volume, vals.unit, batteryKwh, dateStr, initial?.id, fillups, lastOdo],
   ).filter((w) => !dismissed.has(w.id) && (w.id !== 'doublon' || hasData))
 
   const missing = requiredMissing(mode, {
@@ -507,23 +508,28 @@ export function PctFieldsOptional({ state }: { state: EntryState }) {
   const s = state
   if (s.mode !== 'station') return null
   return (
-    <div className="field-grid">
-      <NumField
-        label="Batterie avant (optionnel)"
-        affix="%"
-        inputMode="numeric"
-        value={s.before}
-        onChange={s.setBefore}
-        inputRef={s.refs.beforeInput}
-      />
-      <NumField
-        label="Batterie après (optionnel)"
-        affix="%"
-        inputMode="numeric"
-        value={s.after}
-        onChange={s.setAfter}
-        inputRef={s.refs.afterInput}
-      />
+    <div className="field" style={{ marginBottom: 0 }}>
+      <div className="field-grid">
+        <NumField
+          label="Batterie avant"
+          affix="%"
+          inputMode="numeric"
+          value={s.before}
+          onChange={s.setBefore}
+          inputRef={s.refs.beforeInput}
+        />
+        <NumField
+          label="Batterie après"
+          affix="%"
+          inputMode="numeric"
+          value={s.after}
+          onChange={s.setAfter}
+          inputRef={s.refs.afterInput}
+        />
+      </div>
+      <span className="field-hint" style={{ marginTop: -8, marginBottom: 12 }}>
+        Niveaux du tableau de bord (optionnels).
+      </span>
     </div>
   )
 }
