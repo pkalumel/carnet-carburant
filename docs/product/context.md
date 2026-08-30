@@ -132,9 +132,6 @@ Principes observés dans le code et les décisions récentes :
 
 ## Open questions
 
-- La spécification §1/§6 (« tous les comptes voient les mêmes données ») est
-  antérieure au partage par invitation (RLS propriétaire/invité) — mettre à
-  jour `docs/SPECIFICATIONS.md` ?
 - Faut-il instrumenter l'usage (même minimalement) ou l'échelle familiale
   rend-elle l'observation directe suffisante ?
 - Politique de rétention/purge des photos quand le quota storage (1 Go free
