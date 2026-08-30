@@ -10,6 +10,8 @@ Record observations before turning them into features. Keep evidence, interpreta
 
 | S4 | 2026-08-30 | Patrick, usage réel (capture d'écran) | Ouverture de la saisie via « + » sur iPhone | Le clavier s'ouvre automatiquement et fait défiler la feuille au milieu du formulaire (titre et véhicule hors écran) : « on ne sait pas trop où on est » ; la feuille partielle depuis le bas « ne s'intègre pas bien dans l'ergonomie » | Enregistrer en < 10 s sans désorientation | Chaque saisie | Recherche visuelle avant de taper, défiance envers l'écran | Haute (capture + verbatim) | Saisie plein écran sans clavier auto (décision `2026-08-30-saisie-plein-ecran`) |
 
+| S5 | 2026-08-30 | Patrick, usage réel (capture d'écran) | Chaque lancement de la PWA | L'écran d'onboarding « Bienvenue ! Commence par ajouter le premier véhicule » clignote au démarrage avant l'accueil : l'app affichait l'état « aucun véhicule » pendant le chargement des données | Confiance au lancement | Chaque ouverture | Confusion (« c'est quoi cet écran ? ») | Haute (capture) | Drapeau `loaded` : rien n'est rendu avant le premier chargement |
+
 ## Review notes
 
 ### 2026-08-30

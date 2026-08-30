@@ -32,6 +32,10 @@ export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [fillups, setFillups] = useState<Fillup[]>([])
+  // Premier chargement accompli : avant lui, une liste vide veut dire
+  // « pas encore chargé », pas « aucun véhicule » — on n'affiche rien
+  // plutôt que de faire clignoter l'écran « Bienvenue ! » au démarrage.
+  const [loaded, setLoaded] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [online, setOnline] = useState(navigator.onLine)
   const [tab, setTab] = useState<Tab>('new')
@@ -94,11 +98,15 @@ export default function App() {
     setVehicles(v)
     setFillups(f)
     setPendingCount(outbox.length)
+    setLoaded(true)
   }, [])
 
   // Chargement initial + synchronisation au retour du réseau
   useEffect(() => {
-    if (!session) return
+    if (!session) {
+      setLoaded(false)
+      return
+    }
     void flushOutbox().then(() => refresh())
     const onOnline = async () => {
       setOnline(true)
@@ -198,6 +206,10 @@ export default function App() {
       </>
     )
   }
+
+  // Données pas encore là : on prolonge l'écran de lancement plutôt que de
+  // faire clignoter l'onboarding « Bienvenue ! » ou des écrans vides.
+  if (!loaded) return null
 
   const filtered =
     vehicleFilter === 'all' ? fillups : fillups.filter((f) => f.vehicle_id === vehicleFilter)
