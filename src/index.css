@@ -452,7 +452,7 @@ input:focus-visible, textarea:focus-visible, select.input:focus-visible {
 }
 .field-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0 12px;
 }
 /* Sans min-width, une colonne de grille refuse de rétrécir sous la largeur
@@ -1816,12 +1816,18 @@ input.suggested { color: var(--ink-64); }
 /* Repli mobile : le tableau devient une liste à deux lignes */
 .admin-list { display: none; flex-direction: column; }
 @media (max-width: 979px) {
-  .admin-split { grid-template-columns: 1fr; }
+  /* minmax(0,…) obligatoire : « 1fr » nu laisse un contenu large (SVG
+     Recharts figé à sa première mesure) étirer la grille et désaligner
+     toutes les cartes de la console */
+  .admin-split { grid-template-columns: minmax(0, 1fr); }
   .admin-table-wrap { display: none; }
   .admin-list { display: flex; }
   .card.admin-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; padding: 16px 20px; }
   .card.admin-kpis > div { padding: 0; border-right: none; }
   .card.admin-kpis .meter-big { font-size: 20px; }
+  /* Barre d'outils alignée : segment et tri se partagent une ligne pleine */
+  .admin-toolbar .seg { flex: 1; }
+  .admin-toolbar select.admin-sort { flex: 1; width: auto; }
 }
 @media (min-width: 980px) {
   .admin-toolbar select.admin-sort { display: none; }
