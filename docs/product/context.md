@@ -81,10 +81,8 @@ Principes observés dans le code et les décisions récentes :
   `price_per_liter` est une colonne générée (jamais l'envoyer) ; la
   **modification** d'une saisie exige d'être en ligne (seule la création
   fonctionne hors ligne).
-- Operational: free tiers (1 Go de storage photos) ; jetons Mapbox/HERE/OCM
-  restreints à l'URL de production (carte grise en localhost) ; inscriptions
-  Supabase **actuellement ouvertes** — à fermer après création des comptes
-  (README §2).
+- Operational: free tiers (1 Go de storage photos) ; inscriptions Supabase
+  **actuellement ouvertes** — à fermer après création des comptes (README §2).
 - Legal or regulatory: aucune exigence identifiée (usage familial privé, UE).
 - Connectivity and device: mobile d'abord (iPhone/Android, PWA installée),
   réseau médiocre en station ; l'app se charge sans réseau (service worker).

@@ -84,14 +84,13 @@ graph LR
       UC9["UC9 — S'authentifier"]
       UC10["UC10 — Synchronisation hors ligne"]
       UC11["UC11 — Console d'administration"]
-      UC12["UC12 — Autour de moi<br/>(stations & bornes)"]
     end
 
     SB[("Supabase<br/>DB · Auth · Storage · Edge")]
 
     P1 --> UC1 & UC2 & UC4 & UC5 & UC6 & UC7 & UC8 & UC11
     P2 --> UC3
-    P3 --> UC1 & UC12
+    P3 --> UC1
     P1 & P2 & P3 --> UC9
     UC10 -.déclenché par le retour du réseau.-> App
     App --> SB
@@ -191,13 +190,6 @@ Réservée aux comptes de la table `admins` (invisible via l'API ; contrôle
 saisies, photos), liste et détail des utilisateurs (véhicules, derniers
 pleins, actions dont la suppression de compte en cascade), santé du service,
 journal d'usage des API externes sur 7 jours (`api_log`).
-
-### UC12 — Autour de moi
-Carte Leaflet sur l'accueil : stations carburant ou bornes de recharge les
-plus proches (onglet selon les énergies du périmètre filtré). Sources : HERE
-en principal, repli OSM/Open Charge Map ; prix carburant affichés quand HERE
-les fournit ; regroupement des épingles proches, popup avec itinéraire.
-Jamais bloquant : géolocalisation refusée ou réseau muet → états doux.
 
 ---
 
@@ -403,5 +395,5 @@ policy (table invisible via l'API). Bucket photos privé (URLs signées 1 h).
 | Ergonomie mobile | 3 champs max par parcours ; saisie et édition en écran plein cadre (en-tête fixe, jamais de clavier automatique) ; claviers numériques ; virgule ou point ; thème clair/sombre (système ou forcé) ; saisie à une main |
 | Fiabilité | Synchronisation idempotente (id fixes, doublon 23505 toléré) ; suppression optimiste avec « Annuler » (6 s) |
 | Vie privée | Lieu retirable à la saisie ; aucune analytics client ; photos en bucket privé |
-| Coût | Gratuit à l'échelle familiale (Supabase free tier, Vercel hobby) ; jetons cartes (Mapbox/HERE/OCM) restreints à l'URL de production, usage journalisé dans `api_log` |
+| Coût | Gratuit à l'échelle familiale (Supabase free tier, Vercel hobby) ; usage des API externes (géocodage Nominatim) journalisé dans `api_log` |
 | Limite connue | La **modification** d'une saisie exige d'être en ligne ; seule la **création** fonctionne hors ligne |

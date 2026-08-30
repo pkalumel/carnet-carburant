@@ -513,69 +513,6 @@ console.log('— Encouragements —')
   await ctx.close()
 }
 
-// --------------------------- 6b. carte « Autour de moi » (accueil)
-
-console.log('— Autour de moi —')
-{
-  // Sans permission de géolocalisation : état doux, zéro erreur
-  const { ctx, page, errors } = await newSession()
-  const card = await page.locator('.nearby-card').count()
-  check('autour de moi : carte présente sur l’accueil', card === 1)
-  await page.waitForTimeout(2000)
-  const note = await page.locator('.nearby-card .nearby-note').innerText().catch(() => '')
-  check('autour de moi : état doux sans géoloc', /localisation/i.test(note), note.slice(0, 60))
-  check('zéro pageerror — autour de moi (sans géoloc)', errors.length === 0, errors.slice(0, 2).join(' | '))
-  await ctx.close()
-}
-{
-  // Géoloc accordée (Wavre) : rangées OU état doux — le réseau externe
-  // absent ne doit pas faire échouer, seule la structure est exigée
-  const ctx = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-    deviceScaleFactor: 2,
-    geolocation: { latitude: 50.717, longitude: 4.601 },
-    permissions: ['geolocation'],
-  })
-  const page = await ctx.newPage()
-  const errors = []
-  page.on('pageerror', (e) => errors.push(String(e)))
-  await page.goto(BASE)
-  if (!(await page.locator('nav.tabs').count())) {
-    await page.fill('input[type="email"]', EMAIL)
-    await page.fill('input[type="password"]', PASSWORD)
-    await page.click('form .btn.btn-primary')
-    await page.waitForSelector('nav.tabs', { timeout: 15000 })
-  }
-  await page.waitForSelector('.nearby-card', { timeout: 10000 })
-  await page.waitForTimeout(9000)
-  const hasMap = await page.locator('.nearby-map.leaflet-container').count()
-  check('autour de moi : la carte Leaflet est montée (géoloc accordée)', hasMap === 1)
-  const pins = await page.locator('.nearby-pin').count()
-  const overlay = await page.locator('.nearby-overlay').count()
-  check('autour de moi : épingles ou état doux', pins > 0 || overlay > 0, `pins=${pins}`)
-  if (pins > 0) {
-    // les lieux trop proches sont regroupés sous un compteur : on ouvre le
-    // groupe (zoom) avant d'attendre une popup d'épingle isolée
-    const single = () => page.locator('.nearby-pin:not(.cluster)')
-    if ((await single().count()) === 0) {
-      await page.locator('.nearby-pin.cluster').first().click()
-      await page.waitForTimeout(2000)
-    }
-    const grouped = await page.locator('.nearby-pin.cluster').count()
-    check('autour de moi : regroupement des épingles proches', grouped >= 0, `groupes=${grouped}`)
-    if ((await single().count()) > 0) {
-      await single().first().click()
-      await page.waitForTimeout(800)
-      const href = await page.locator('.nearby-pop a').getAttribute('href').catch(() => null)
-      check('autour de moi : popup avec lien itinéraire', /^https:\/\/maps\.apple\.com\//.test(href ?? ''))
-    }
-  }
-  check('zéro pageerror — autour de moi (géoloc)', errors.length === 0, errors.slice(0, 2).join(' | '))
-  await ctx.close()
-}
-
 // ------------------------------------------------ 7. nettoyage du plein test
 
 if (createdTestFillup) {

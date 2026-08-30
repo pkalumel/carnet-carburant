@@ -4,9 +4,8 @@ import { summarize } from '../lib/stats'
 import {
   fmtDateTime, fmtEur, fmtKwh, fmtLiters, fmtPricePerKwh, fmtPricePerL,
 } from '../lib/format'
-import { energiesFor, type Energy, type Fillup, type Vehicle } from '../lib/types'
+import type { Fillup, Vehicle } from '../lib/types'
 import AnimatedNumber from './AnimatedNumber'
-import NearbyCard from './NearbyCard'
 import QuickCapture from './QuickCapture'
 import { Meter } from './chartKit'
 import { CameraIcon, HistoryIcon, PumpIcon } from './icons'
@@ -108,15 +107,6 @@ export default function Home({
   const vehicleName = (id: string) => vehicles.find((v) => v.id === id)?.name ?? '—'
   const recent = real.slice(0, 3)
 
-  // Énergies du périmètre courant → onglets de la carte « Autour de moi »
-  const nearbyEnergies = useMemo<Energy[]>(() => {
-    const scope = vehicleFilter === 'all' ? vehicles : vehicles.filter((v) => v.id === vehicleFilter)
-    const set = new Set<Energy>()
-    for (const v of scope) for (const e of energiesFor(v.fuel)) set.add(e)
-    const ordered = (['fuel', 'electric'] as Energy[]).filter((e) => set.has(e))
-    return ordered.length > 0 ? ordered : ['fuel']
-  }, [vehicles, vehicleFilter])
-
   return (
     <>
       <section className="card">
@@ -187,8 +177,6 @@ export default function Home({
           ))}
         </section>
       )}
-
-      <NearbyCard energies={nearbyEnergies} defaultEnergy={last?.energy ?? 'fuel'} />
 
       {recent.length > 0 ? (
         <section className="card">
