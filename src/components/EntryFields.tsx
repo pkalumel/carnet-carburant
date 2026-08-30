@@ -301,7 +301,6 @@ function NumField({
   inputRef,
   error,
   derived = false,
-  autoFocus = false,
   enterHint = 'next',
   inputMode = 'decimal',
 }: {
@@ -312,7 +311,6 @@ function NumField({
   inputRef?: React.RefObject<HTMLInputElement | null>
   error?: string
   derived?: boolean
-  autoFocus?: boolean
   enterHint?: 'next' | 'done'
   inputMode?: 'decimal' | 'numeric'
 }) {
@@ -326,7 +324,6 @@ function NumField({
           type="text"
           inputMode={inputMode}
           enterKeyHint={enterHint}
-          autoFocus={autoFocus}
           className={error ? 'error' : ''}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -338,7 +335,7 @@ function NumField({
   )
 }
 
-export function EntryFields({ state, autoFocus = false }: { state: EntryState; autoFocus?: boolean }) {
+export function EntryFields({ state }: { state: EntryState }) {
   const s = state
 
   return (
@@ -384,7 +381,6 @@ export function EntryFields({ state, autoFocus = false }: { state: EntryState; a
               }}
               inputRef={s.refs.beforeInput}
               error={s.errors.before}
-              autoFocus={autoFocus}
             />
             <NumField
               label="Batterie après"
@@ -422,7 +418,6 @@ export function EntryFields({ state, autoFocus = false }: { state: EntryState; a
               onChange={(v) => s.editTriangle('volume', v)}
               inputRef={s.refs.volumeInput}
               error={s.errors.volume}
-              autoFocus={autoFocus}
             />
             <NumField
               label="Prix total"

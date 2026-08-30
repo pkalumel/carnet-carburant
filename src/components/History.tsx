@@ -137,12 +137,24 @@ function Editor({
   }
 
   return (
-    <form onSubmit={submit}>
-      <h2>
-        {fillup.is_draft
-          ? electric ? 'Compléter la recharge' : 'Compléter le plein'
-          : electric ? 'Modifier la recharge' : 'Modifier le plein'}
-      </h2>
+    <>
+      {/* En-tête fixe : on sait toujours où l'on est, le ✕ referme */}
+      <div className="page-modal-top">
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow">{electric ? 'Recharge' : 'Carburant'}</div>
+          <div className="title">
+            {fillup.is_draft
+              ? electric ? 'Compléter la recharge' : 'Compléter le plein'
+              : electric ? 'Modifier la recharge' : 'Modifier le plein'}
+          </div>
+        </div>
+        <button type="button" className="page-modal-close" aria-label="Fermer" autoFocus onClick={onDone}>
+          <XIcon size={18} />
+        </button>
+      </div>
+      <div className="page-modal-body">
+    <form className="card entry-form" onSubmit={submit}>
+      <div className="sheet-body">
       {photoUrl && <img className="photo-full" src={photoUrl} alt={electric ? 'Écran de la borne' : 'Écran de la pompe'} />}
       {fillup.lat != null && fillup.lng != null && (
         <div className="geo-line">
@@ -181,7 +193,7 @@ function Editor({
           </div>
         </div>
       )}
-      <EntryFields state={entry} autoFocus={fillup.is_draft} />
+      <EntryFields state={entry} />
       {vehicles.length > 1 && (
         <div className="field">
           <span className="lbl">Véhicule</span>
@@ -229,16 +241,21 @@ function Editor({
         {newPhoto ? `Nouvelle photo : ${newPhoto.name}` : fillup.photo_path ? 'Remplacer la photo' : 'Joindre une photo'}
       </button>
       <input ref={photoInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setNewPhoto(e.target.files?.[0] ?? null)} />
-      <button className="btn btn-primary" disabled={busy}>
-        <SaveIcon /> {busy ? 'Enregistrement…' : 'Enregistrer'}
-      </button>
-      <button type="button" className="btn-ghost" style={{ width: '100%', marginTop: 8 }} onClick={onDone} disabled={busy}>
+      <button type="button" className="btn-ghost" style={{ width: '100%' }} onClick={onDone} disabled={busy}>
         <XIcon /> Annuler
       </button>
       <button type="button" className="btn-delete" onClick={remove} disabled={busy}>
         <TrashIcon /> {electric ? 'Supprimer cette recharge' : 'Supprimer ce plein'}
       </button>
+      </div>
+      <div className="sheet-footer">
+        <button className="btn btn-primary" disabled={busy}>
+          <SaveIcon /> {busy ? 'Enregistrement…' : 'Enregistrer'}
+        </button>
+      </div>
     </form>
+      </div>
+    </>
   )
 }
 
@@ -799,24 +816,20 @@ export default function History({
       )}
 
       {editing && (
-        <>
-          <div className="sheet-backdrop" onClick={() => setEditingId(null)} />
-          <div className="sheet" role="dialog" aria-modal="true" aria-label="Édition du plein">
-            <div className="sheet-handle" aria-hidden />
-            <Editor
-              key={editing.id}
-              fillup={editing}
-              vehicles={vehicles}
-              allFillups={allFillups}
-              onDeleteRequest={requestDelete}
-              showToast={showToast}
-              onDone={() => {
-                setEditingId(null)
-                onChanged()
-              }}
-            />
-          </div>
-        </>
+        <div className="page-modal" role="dialog" aria-modal="true" aria-label="Édition du plein">
+          <Editor
+            key={editing.id}
+            fillup={editing}
+            vehicles={vehicles}
+            allFillups={allFillups}
+            onDeleteRequest={requestDelete}
+            showToast={showToast}
+            onDone={() => {
+              setEditingId(null)
+              onChanged()
+            }}
+          />
+        </div>
       )}
     </>
   )

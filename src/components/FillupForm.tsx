@@ -15,6 +15,7 @@ interface Props {
   /** énergie pré-sélectionnée (raccourci PWA « Recharge ») */
   defaultEnergy?: Energy
   userEmail: string | null
+  onClose: () => void
   onSaved: (status: 'synced' | 'queued', draft: boolean) => void
   showToast: (msg: string, kind?: 'ok' | 'err') => void
 }
@@ -34,16 +35,40 @@ function dateLabel(value: string): string {
   return fmtDateTime(d.toISOString())
 }
 
-export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaultEnergy, userEmail, onSaved, showToast }: Props) {
-  const [vehicleId, setVehicleId] = useState(() => {
-    const last = localStorage.getItem(LAST_VEHICLE_KEY)
-    return (
-      defaultVehicleId ??
-      (last && vehicles.some((v) => v.id === last) ? last : null) ??
-      vehicles[0]?.id ??
-      ''
-    )
-  })
+/** Véhicule initial : filtre courant, sinon dernier utilisé, sinon premier —
+ *  et pour le raccourci « Recharge », un véhicule qui se recharge (sinon le
+ *  dernier véhicule essence forcerait l'énergie sur « fuel »). */
+function pickVehicle(
+  vehicles: Vehicle[],
+  defaultVehicleId: string | null,
+  defaultEnergy: Energy | undefined,
+): string {
+  const last = localStorage.getItem(LAST_VEHICLE_KEY)
+  const candidates = [
+    defaultVehicleId,
+    last && vehicles.some((v) => v.id === last) ? last : null,
+    vehicles[0]?.id ?? null,
+  ].filter((id): id is string => id != null)
+  if (defaultEnergy === 'electric') {
+    const chargeable = (id: string) =>
+      energiesFor(vehicles.find((v) => v.id === id)?.fuel ?? null).includes('electric')
+    const ok =
+      candidates.find(chargeable) ??
+      vehicles.find((v) => energiesFor(v.fuel).includes('electric'))?.id
+    if (ok) return ok
+  }
+  return candidates[0] ?? ''
+}
+
+export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaultEnergy, userEmail, onClose, onSaved, showToast }: Props) {
+  const [vehicleId, setVehicleId] = useState(() => pickVehicle(vehicles, defaultVehicleId, defaultEnergy))
+
+  // Ouverture au démarrage (raccourci ?action=…) : le formulaire est monté
+  // avant l'arrivée des véhicules — on rejoue le choix initial à ce moment-là
+  useEffect(() => {
+    if (vehicles.length === 0 || vehicles.some((v) => v.id === vehicleId)) return
+    setVehicleId(pickVehicle(vehicles, defaultVehicleId, defaultEnergy))
+  }, [vehicles, vehicleId, defaultVehicleId, defaultEnergy])
   const [energyChoice, setEnergyChoice] = useState<Energy | null>(defaultEnergy ?? null)
   const [dateStr, setDateStr] = useState(() => toLocalInputValue(new Date()))
   const [dateOpen, setDateOpen] = useState(false)
@@ -151,9 +176,20 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
   }
 
   return (
+    <>
+      {/* En-tête fixe : on sait toujours où l'on est, le ✕ referme */}
+      <div className="page-modal-top">
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow">{electric ? 'Recharge' : 'Carburant'}</div>
+          <div className="title">{electric ? 'Nouvelle recharge' : 'Nouveau plein'}</div>
+        </div>
+        <button type="button" className="page-modal-close" aria-label="Fermer" autoFocus onClick={onClose}>
+          <XIcon size={18} />
+        </button>
+      </div>
+      <div className="page-modal-body">
     <form className="card entry-form" onSubmit={submit} noValidate>
       <div className="sheet-body">
-        <h2>{electric ? 'Nouvelle recharge' : 'Nouveau plein'}</h2>
         {vehicles.length > 1 && (
           <div className="field">
             <span className="lbl">Véhicule</span>
@@ -193,7 +229,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
           </div>
         )}
 
-        <EntryFields state={entry} autoFocus />
+        <EntryFields state={entry} />
 
         <div className="field">
           <span className="lbl">{electric ? 'Charge' : 'Plein'}</span>
@@ -360,5 +396,7 @@ export default function FillupForm({ vehicles, fillups, defaultVehicleId, defaul
         )}
       </div>
     </form>
+      </div>
+    </>
   )
 }

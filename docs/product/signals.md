@@ -8,6 +8,8 @@ Record observations before turning them into features. Keep evidence, interpreta
 | S2 | 2026-08-12 | Audit UX/UI (`docs/AUDIT-UX-UI.md`) | Parcours complet émulé (iPhone 13, données réalistes) | Constats d'ergonomie et d'accessibilité ayant mené au design « signalétique » et au crawler de vérification | Tous | — | — | Haute (audit outillé) | `scripts/verify-ux.mjs` |
 | S3 | 2026-08-30 | Patrick, usage réel (capture d'écran) | Recharge du VW Caddy eHybrid (19,7 kWh utiles) sur borne : 21,44 kWh / 14,86 € | Deux fausses alertes sur une saisie légitime : « kWh > capacité » (la borne facture l'énergie délivrée, pertes ≈ 9 % incluses) et « conso inhabituelle » (9,7 vs 4,4 kWh/100 — km partagés essence/électrique sur un hybride) ; libellés « Batterie avant/après (optionnel) » débordant de la feuille | Confiance dans les garde-fous ; saisie sans friction | Chaque recharge borne d'un hybride | Fatigue d'alerte : « C'est normal » cliqué par réflexe, les vraies erreurs passeront | Haute (données réelles chiffrées) | Tolérance pertes + conso ignorée en bi-énergie + fix grille (décision `2026-08-30-tolerance-pertes-recharge`) |
 
+| S4 | 2026-08-30 | Patrick, usage réel (capture d'écran) | Ouverture de la saisie via « + » sur iPhone | Le clavier s'ouvre automatiquement et fait défiler la feuille au milieu du formulaire (titre et véhicule hors écran) : « on ne sait pas trop où on est » ; la feuille partielle depuis le bas « ne s'intègre pas bien dans l'ergonomie » | Enregistrer en < 10 s sans désorientation | Chaque saisie | Recherche visuelle avant de taper, défiance envers l'écran | Haute (capture + verbatim) | Saisie plein écran sans clavier auto (décision `2026-08-30-saisie-plein-ecran`) |
+
 ## Review notes
 
 ### 2026-08-30

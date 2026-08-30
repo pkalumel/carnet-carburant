@@ -236,17 +236,22 @@ console.log('— Navigation —')
     await goTab(page, name)
     await plus.click()
     const opened = await page
-      .waitForSelector('.sheet .entry-form', { timeout: 4000 })
+      .waitForSelector('.page-modal .entry-form', { timeout: 4000 })
       .then(() => true)
       .catch(() => false)
     check(`nav : le « + » ouvre la saisie depuis ${name}`, opened)
-    if (opened) await page.click('.sheet-backdrop', { position: { x: 10, y: 10 } })
+    if (opened) await page.click('.page-modal-close')
     await page.waitForTimeout(400)
   }
 
-  // Admin via Réglages, avec retour
-  const viaSettings = await openAdmin(page)
-  check('admin : accessible via Réglages', viaSettings)
+  // Admin via Réglages, avec retour — section ignorée pour un compte
+  // non administrateur (le bouton n'existe pas, RLS côté serveur)
+  await goTab(page, 'reglages')
+  const isAdmin =
+    (await page.locator('button', { hasText: 'Ouvrir la console d’administration' }).count()) === 1
+  if (!isAdmin) console.log('(admin ignoré : compte non administrateur)')
+  const viaSettings = isAdmin && (await openAdmin(page))
+  if (isAdmin) check('admin : accessible via Réglages', viaSettings)
   if (viaSettings) {
     const back = page.locator('.admin-back button')
     check('admin : retour « ← Réglages » présent', (await back.count()) === 1)
@@ -267,7 +272,7 @@ console.log('— Navigation —')
   await page.goto(`${BASE}/?action=new`)
   await page.waitForSelector('nav.tabs', { timeout: 15000 })
   const opened = await page
-    .waitForSelector('.sheet .entry-form', { timeout: 5000 })
+    .waitForSelector('.page-modal .entry-form', { timeout: 5000 })
     .then(() => true)
     .catch(() => false)
   check('raccourci ?action=new ouvre la saisie', opened)
@@ -281,20 +286,20 @@ let createdTestFillup = false
 {
   const { ctx, page, errors } = await newSession()
   await page.click('nav.tabs button.tab-plus')
-  await page.waitForSelector('.sheet .entry-form')
+  await page.waitForSelector('.page-modal .entry-form')
   await page.waitForTimeout(700)
 
-  const focusedVolume = await page.evaluate(() => {
-    const el = document.activeElement
-    return el?.closest('.field-grid') != null && el.getAttribute('inputmode') === 'decimal'
-  })
-  check('saisie : autofocus sur le volume', focusedVolume)
+  // Plein écran : l'en-tête situe l'utilisateur, le clavier attend le tap
+  const headTitle = await page.locator('.page-modal-top .title').innerText().catch(() => '')
+  check('saisie : écran plein cadre avec titre', /Nouveau plein|Nouvelle recharge/.test(headTitle), headTitle)
+  const noAutofocus = await page.evaluate(() => document.activeElement?.tagName !== 'INPUT')
+  check('saisie : pas de clavier automatique à l’ouverture', noAutofocus)
 
   const heights = await page.evaluate(() => {
-    const inputs = [...document.querySelectorAll('.sheet .input-affix input')].map(
+    const inputs = [...document.querySelectorAll('.page-modal .input-affix input')].map(
       (i) => i.getBoundingClientRect().height,
     )
-    const segs = [...document.querySelectorAll('.sheet .seg button')].map(
+    const segs = [...document.querySelectorAll('.page-modal .seg button')].map(
       (b) => b.getBoundingClientRect().height,
     )
     return { minInput: Math.min(...inputs), minSeg: segs.length ? Math.min(...segs) : 48 }
@@ -303,17 +308,17 @@ let createdTestFillup = false
   check('saisie : segs ≥ 48 px', heights.minSeg >= 47.5, `min=${heights.minSeg}`)
 
   // Énergie carburant si le véhicule est bi-énergie
-  const fuelChip = page.locator('.sheet .chips .chip', { hasText: 'Carburant' })
+  const fuelChip = page.locator('.page-modal .chips .chip', { hasText: 'Carburant' })
   if (await fuelChip.count()) await fuelChip.first().click()
   await page.waitForTimeout(300)
 
-  // Triangle : volume + total → prix unitaire dérivé
-  const grids = page.locator('.sheet .field-grid')
+  // 3 champs : volume + total → prix unitaire en ligne calculée (pas un champ)
+  const grids = page.locator('.page-modal .field-grid')
   await grids.nth(0).locator('input').nth(0).fill('10')
   await grids.nth(0).locator('input').nth(1).fill('99')
   await page.waitForTimeout(300)
-  const derived = await grids.nth(1).locator('.input-affix.calc input').count()
-  check('saisie : champ dérivé du triangle affiché', derived === 1)
+  const calcLine = await page.locator('.page-modal .calc-line').innerText().catch(() => '')
+  check('saisie : prix unitaire calculé en ligne', /9,900/.test(calcLine), calcLine)
 
   // 9,90 €/L → avertissement prix, actionnable
   const warn = page.locator('.field-warn')
@@ -325,24 +330,31 @@ let createdTestFillup = false
     await page.waitForTimeout(200)
     const focused = await page.evaluate(() => document.activeElement?.tagName === 'INPUT')
     check('saisie : Corriger focus un champ', focused)
+    // D'autres avertissements peuvent coexister (conso, doublon…) : on
+    // vérifie que CELUI qu'on écarte disparaît, pas que tous disparaissent
+    const dismissedText = (await warn.first().innerText()).split('\n')[0]
     await warn.first().locator('button', { hasText: 'C’est normal' }).click()
     await page.waitForTimeout(300)
-    check('saisie : « C’est normal » écarte l’avertissement', (await page.locator('.field-warn').count()) === 0)
+    check(
+      'saisie : « C’est normal » écarte l’avertissement',
+      (await page.locator('.field-warn', { hasText: 'Prix inhabituel' }).count()) === 0,
+      dismissedText.slice(0, 50),
+    )
   }
 
   // Compteur vidé (pas d'avertissement kilométrage) puis enregistrement
-  await page.locator('.sheet .input-affix input[inputmode="numeric"]').fill('')
+  await page.locator('.page-modal .input-affix input[inputmode="numeric"]').first().fill('')
   await page.evaluate(() => {
     window.__flashState = null
     const obs = new MutationObserver(() => {
       if (window.__flashState == null && document.querySelector('.success-flash')) {
-        window.__flashState = { sheetOpen: document.querySelector('.sheet') != null }
+        window.__flashState = { sheetOpen: document.querySelector('.page-modal') != null }
         obs.disconnect()
       }
     })
     obs.observe(document.body, { childList: true, subtree: true })
   })
-  await page.click('.sheet-footer .btn.btn-primary')
+  await page.click('.page-modal .sheet-footer .btn.btn-primary')
   const flashSeen = await page
     .waitForSelector('.success-flash', { timeout: 6000 })
     .then(() => true)
@@ -351,14 +363,14 @@ let createdTestFillup = false
   createdTestFillup = flashSeen
   if (flashSeen) {
     const state = await page.evaluate(() => window.__flashState)
-    check('saisie : coche AVANT fermeture de la sheet', state?.sheetOpen === true)
+    check('saisie : coche AVANT fermeture de l’écran', state?.sheetOpen === true)
     check(
       'saisie : overlay role=status',
       (await page.locator('.success-flash').getAttribute('role')) === 'status',
     )
   }
   await page.waitForTimeout(1500)
-  check('saisie : sheet fermée après succès', (await page.locator('.sheet').count()) === 0)
+  check('saisie : écran fermé après succès', (await page.locator('.page-modal').count()) === 0)
 
   await goTab(page, 'historique')
   check(
@@ -592,8 +604,8 @@ if (createdTestFillup) {
   if (!(await gone())) {
     try {
       await testRow().locator('.fillup-item').click({ timeout: 4000 })
-      await page.waitForSelector('.sheet', { timeout: 4000 })
-      await page.locator('.sheet .btn-delete').click({ timeout: 4000 })
+      await page.waitForSelector('.page-modal', { timeout: 4000 })
+      await page.locator('.page-modal .btn-delete').click({ timeout: 4000 })
       await page.waitForTimeout(8000)
     } catch {
       // échec des deux chemins : l'assertion ci-dessous le signale

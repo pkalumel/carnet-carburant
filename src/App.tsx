@@ -417,18 +417,16 @@ export default function App() {
       </nav>
 
       {entryOpen && (
-        <>
-          <div className="sheet-backdrop" onClick={() => setEntryOpen(false)} />
-          <div className="sheet" role="dialog" aria-modal="true" aria-label="Saisie d’un plein">
-            <div className="sheet-handle" aria-hidden />
-            <FillupForm
-              vehicles={vehicles}
-              fillups={fillups}
-              defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
-              defaultEnergy={bootAction === 'recharge' ? 'electric' : undefined}
-              userEmail={userEmail}
-              showToast={showToast}
-              onSaved={(status, draft) => {
+        <div className="page-modal" role="dialog" aria-modal="true" aria-label="Saisie d’un plein">
+          <FillupForm
+            vehicles={vehicles}
+            fillups={fillups}
+            defaultVehicleId={vehicleFilter !== 'all' ? vehicleFilter : null}
+            defaultEnergy={bootAction === 'recharge' ? 'electric' : undefined}
+            userEmail={userEmail}
+            showToast={showToast}
+            onClose={() => setEntryOpen(false)}
+            onSaved={(status, draft) => {
                 navigator.vibrate?.(30)
                 setSuccessFlash(true)
                 window.setTimeout(() => setEntryOpen(false), 150)
@@ -448,9 +446,8 @@ export default function App() {
                 if (draft) setTab('history')
                 void refresh()
               }}
-            />
-          </div>
-        </>
+          />
+        </div>
       )}
 
       {successFlash && (

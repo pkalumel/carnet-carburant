@@ -1599,16 +1599,23 @@ input.suggested { color: var(--ink-64); }
 }
 .date-line .chev { color: var(--ink-64); transition: transform 0.18s ease; }
 
-/* Pied collant de la feuille de saisie : Enregistrer reste sous le pouce */
+/* Pied collant de la saisie : Enregistrer reste sous le pouce, que le
+   formulaire vive dans une feuille (ajout de véhicule) ou dans l'écran
+   plein cadre .page-modal (saisie et édition d'un plein) */
 .entry-form { display: flex; flex-direction: column; }
 .entry-form .sheet-body { display: flex; flex-direction: column; }
-.sheet .entry-form { padding-bottom: 0; }
-.sheet .entry-form .sheet-footer {
+.sheet .entry-form,
+.page-modal .entry-form { padding-bottom: 0; }
+.sheet .entry-form .sheet-footer,
+.page-modal .entry-form .sheet-footer {
   position: sticky;
   bottom: 0;
   margin: 4px -24px 0;
   padding: 12px 24px max(env(safe-area-inset-bottom), 16px);
   background: var(--surface);
+}
+.page-modal .entry-form .sheet-footer {
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 /* Sortie de secours quand une donnée manque : brouillon « À compléter » */
 .btn-later {
@@ -1773,9 +1780,9 @@ input.suggested { color: var(--ink-64); }
 .page-modal-close {
   margin-left: auto;
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
